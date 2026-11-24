@@ -22,6 +22,8 @@ def pdfs(tmp_path_factory):
     make_pdfs.footnotes(str(d / "footnotes.pdf"))
     make_pdfs.equations(str(d / "equations.pdf"))
     make_pdfs.crossrefs(str(d / "crossrefs.pdf"))
+    make_pdfs.bibliography(str(d / "bibliography.pdf"))
+    make_pdfs.algorithm(str(d / "algorithm.pdf"))
     return d
 
 
@@ -262,3 +264,26 @@ def test_crossrefs(pdfs):
     # the table anchor must actually exist
     anchor = links["Table 1"].split("#")[-1]
     assert anchor in targets, f"Table 1 anchor {anchor} not found; targets: {targets}"
+
+
+def test_bibliography(pdfs):
+    """Bibliography entries after a References heading become list items."""
+    rep, chapters, _ = run(pdfs, "bibliography")
+    ch = chapters[0]
+    items = ch.xpath("//x:ul/x:li|//x:ol/x:li", namespaces=NS)
+    texts = ["".join(li.itertext()).strip() for li in items]
+    assert len(texts) >= 3, f"Expected >=3 bibliography items, got {len(texts)}: {texts}"
+    assert any("[1]" in t and "Smith" in t for t in texts)
+    assert any("[2]" in t and "Lee" in t for t in texts)
+    assert any("[3]" in t and "Wang" in t for t in texts)
+
+
+def test_algorithm(pdfs):
+    """Algorithm pseudocode lines are merged into a single algorithm block."""
+    _, chapters, _ = run(pdfs, "algorithm")
+    ch = chapters[0]
+    algo = ch.xpath("//x:div[@class='algorithm']", namespaces=NS)
+    assert len(algo) >= 1, "No algorithm block found"
+    pre_text = "".join(algo[0].xpath(".//x:pre//text()", namespaces=NS))
+    assert "←" in pre_text or "theta" in pre_text.lower() or "Require" in pre_text
+    assert "while" in pre_text.lower() or "return" in pre_text.lower()

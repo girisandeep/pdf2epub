@@ -117,6 +117,8 @@ if __name__ == "__main__":
     out = sys.argv[1]
     os.makedirs(out, exist_ok=True)
     book(f"{out}/book.pdf"); two_column(f"{out}/twocol.pdf"); hyphenated(f"{out}/hyphen.pdf"); footnotes(f"{out}/footnotes.pdf")
+    equations(f"{out}/equations.pdf"); crossrefs(f"{out}/crossrefs.pdf")
+    bibliography(f"{out}/bibliography.pdf"); algorithm(f"{out}/algorithm.pdf")
 
 
 def equations(path: str) -> None:
@@ -184,3 +186,62 @@ def crossrefs(path: str) -> None:
     story.append(Paragraph("Table 1 shows that our model outperforms the baseline.", body))
 
     doc.build(story)
+
+
+def bibliography(path: str) -> None:
+    """PDF with a References section containing [N]-style bibliography entries."""
+    ss = getSampleStyleSheet()
+    body = ParagraphStyle("body", parent=ss["Normal"], fontName="Times-Roman", fontSize=11, leading=14, spaceAfter=8)
+    h1 = ParagraphStyle("h1", parent=ss["Heading1"], fontName="Helvetica-Bold", fontSize=18, spaceAfter=10)
+
+    doc = BaseDocTemplate(path, pagesize=letter)
+    f = Frame(72, 72, letter[0] - 144, letter[1] - 144, id="main")
+    doc.addPageTemplates([PageTemplate("main", frames=[f])])
+
+    story = [
+        Paragraph("1 Introduction", h1),
+        Paragraph("Deep learning has achieved remarkable results [1]. "
+                   "Recent work [2] builds on these foundations. "
+                   "Earlier methods [3] used different approaches.", body),
+        Paragraph("References", h1),
+        Paragraph("[1] A. Smith and B. Jones. Deep learning for natural language processing. "
+                   "In Proceedings of ICML, pages 100-110, 2020.", body),
+        Paragraph("[2] C. Lee. Attention mechanisms in neural networks. "
+                   "Journal of Machine Learning Research, 21:1-45, 2021.", body),
+        Paragraph("[3] D. Wang, E. Chen, and F. Garcia. Classical approaches to text classification. "
+                   "In NeurIPS, 2019.", body),
+    ]
+    doc.build(story)
+
+
+def algorithm(path: str) -> None:
+    """PDF with algorithm pseudocode blocks using arrow notation."""
+    c = canvas.Canvas(path, pagesize=letter)
+    y = 700
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(72, y, "1 Method")
+    y -= 30
+    c.setFont("Times-Roman", 11)
+    c.drawString(72, y, "We propose Algorithm 1 for optimizing the objective function.")
+    y -= 25
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(72, y, "Algorithm 1: Gradient Descent")
+    y -= 18
+    algo_lines = [
+        "Require: learning rate lr",
+        "Require: initial parameters w0",
+        "w ← w0",
+        "while not converged do",
+        "    grad ← ComputeGradient(w)",
+        "    w ← w - lr * grad",
+        "end while",
+        "return w",
+    ]
+    c.setFont("Times-Roman", 10)
+    for ln in algo_lines:
+        c.drawString(90, y, ln)
+        y -= 20
+    y -= 12
+    c.setFont("Times-Roman", 11)
+    c.drawString(72, y, "The algorithm converges under standard assumptions.")
+    c.save()
