@@ -120,7 +120,7 @@ class FootnoteDef:
 @dataclass
 class Block:
     """A semantic unit after segmentation."""
-    kind: str                    # para | heading | li | code | image | table | toc | caption
+    kind: str                    # para | heading | li | code | algorithm | image | table | toc | caption
     page: int
     lines: list[Line] = field(default_factory=list)
     region: int = 0

@@ -253,7 +253,7 @@ def _is_break(prev: Line, ln: Line, cur: Block, left: float, right: float, st: D
         return True
     if ln.mono != prev.mono:
         return True
-    if cur.kind == "code":
+    if cur.kind in ("code", "algorithm"):
         return False
     if abs(ln.size - prev.size) > 0.8:
         return True
@@ -305,7 +305,8 @@ def segment_page(items: list, page: int, st: DocStats) -> list[Block]:
             lm = list_marker(ln.text) if not ln.mono else None
             if lm and lm[0] != "bullet" and not (complete or cur is None):
                 lm = None
-            cur = Block("code" if ln.mono else "para", page, [ln], region=ln.region, y0=ln.y0,
+            kind = "code" if ln.mono else "algorithm" if ln.ml_label == "code" else "para"
+            cur = Block(kind, page, [ln], region=ln.region, y0=ln.y0,
                         marker=lm, indent=ln.x0)
             cur.indented_first = (ln.x0 - left) > 0.8 * ln.size
         else:

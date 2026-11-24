@@ -194,6 +194,30 @@ def render_code(b: Block) -> str:
     return "<pre><code>" + escape("\n".join(out)) + "</code></pre>"
 
 
+def render_algorithm(b: Block) -> str:
+    """Render ML-detected algorithm / pseudocode as a styled block.
+
+    Uses plain text (no sub/sup processing) to avoid mathjunk from
+    subscripted variable names like θ_t, β_1, g_t.
+    """
+    rows: list[tuple[int, str]] = []
+    prev = None
+    for ln in b.lines:
+        blanks = 0
+        if prev is not None:
+            dy = base_y(ln) - base_y(prev)
+            blanks = min(3, max(0, round(dy / (ln.size * 1.2)) - 1))
+        raw = ln.text.expandtabs(4).rstrip()
+        rows.append((blanks, raw))
+        prev = ln
+    common = min((len(r) - len(r.lstrip()) for _, r in rows if r.strip()), default=0)
+    out: list[str] = []
+    for blanks, raw in rows:
+        out.extend([""] * blanks)
+        out.append(raw[common:])
+    return '<div class="algorithm"><pre>' + escape("\n".join(out)) + "</pre></div>"
+
+
 def _fn_aside(fn: FootnoteDef, ctx: RenderCtx) -> str:
     lines = list(fn.lines)
     first = lines[0]
@@ -247,6 +271,8 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id) -> list[st
             continue
         elif k == "code":
             html.append(render_code(b))
+        elif k == "algorithm":
+            html.append(render_algorithm(b))
         elif k == "image":
             im = b.image
             href = ctx.image_href.get(im.key)
