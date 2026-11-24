@@ -30,6 +30,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.dirname(HERE))
 CORPUS = os.path.join(HERE, "corpus")
 BASELINE = os.path.join(HERE, "corpus_baseline.json")
+BASELINE_ML = os.path.join(HERE, "corpus_baseline_ml.json")
 NS = {"x": "http://www.w3.org/1999/xhtml"}
 
 
@@ -38,7 +39,7 @@ def toks(s: str) -> Counter:
 
 
 def evaluate(args: tuple) -> dict:
-    pdf, equations = args
+    pdf, equations, ml = args
     import pymupdf
     from lxml import etree
     from epub_check import check
@@ -47,7 +48,7 @@ def evaluate(args: tuple) -> dict:
     out = os.path.join(tempfile.mkdtemp(), "o.epub")
     t0 = time.time()
     try:
-        rep = convert(pdf, out, ConversionOptions(equations=equations))
+        rep = convert(pdf, out, ConversionOptions(equations=equations, ml="on" if ml else "off"))
     except Exception as e:                      # a crash is the worst regression
         return {"error": f"{type(e).__name__}: {e}"}
     secs = time.time() - t0
@@ -85,6 +86,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("names", nargs="*")
     ap.add_argument("--update-baseline", action="store_true")
+    ap.add_argument("--workers", type=int, default=0, help="parallel processes (default: 4, or 1 with --ml)")
+    ap.add_argument("--ml", action="store_true", help="use the deep-learning layout model")
     ap.add_argument("--no-equations", action="store_true", help="measure without equation images (for before/after)")
     a = ap.parse_args()
     files = {}
@@ -92,9 +95,10 @@ def main() -> int:
         p = os.path.join(CORPUS, d, f"{d}.pdf")
         if os.path.isfile(p) and (not a.names or d in a.names):
             files[d] = p
-    with ProcessPoolExecutor(max_workers=min(4, os.cpu_count() or 2)) as ex:
-        res = dict(zip(files, ex.map(evaluate, [(f, not a.no_equations) for f in files.values()])))
-    base = json.load(open(BASELINE)) if os.path.exists(BASELINE) else {}
+    with ProcessPoolExecutor(max_workers=a.workers or (1 if a.ml else min(4, os.cpu_count() or 2))) as ex:
+        res = dict(zip(files, ex.map(evaluate, [(f, not a.no_equations, a.ml) for f in files.values()])))
+    bpath = BASELINE_ML if a.ml else BASELINE
+    base = json.load(open(bpath)) if os.path.exists(bpath) else {}
     cols = ["pages", "secs", "recall", "precision", "valid", "headings", "tables", "images", "frag_pct", "mathjunk", "dup", "eq"]
     print(f"{'doc':14}" + "".join(f"{c:>10}" for c in cols))
     problems = []
@@ -117,7 +121,7 @@ def main() -> int:
         return 0
     if a.update_baseline:
         base.update(res)
-        json.dump(base, open(BASELINE, "w"), indent=1, sort_keys=True)
+        json.dump(base, open(bpath, "w"), indent=1, sort_keys=True)
         print("baseline updated")
     elif problems:
         print("\nREGRESSIONS:\n  " + "\n  ".join(problems))

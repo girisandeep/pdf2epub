@@ -9,6 +9,7 @@ dependencies = ["pymupdf>=1.24"]
 
 [project.optional-dependencies]
 ocr = ["rapidocr-onnxruntime"]
+ml = ["docling"]
 dev = ["pytest", "reportlab", "lxml"]
 
 [project.scripts]

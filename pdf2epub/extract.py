@@ -426,7 +426,9 @@ def _vector_figures(page: pymupdf.Page, lines: list[Line], tables: list[TableIte
         is_fig = (c.curved and c.paths >= 3) or (c.paths >= 12 and avg_words < 5)
         if not is_fig:
             continue
-        if any(_inside(i.bbox, tuple(r), 0.8) and _area(i.bbox) > 0.6 * _area(tuple(r)) for i in images):
+        if any((i.kind != "figure" and _overlap(i.bbox, tuple(r)) > 0.6 * _area(tuple(r)))
+               or (i.kind == "figure" and _overlap(i.bbox, tuple(r)) > 0.5 * min(_area(i.bbox), _area(tuple(r))))
+               for i in images):
             continue
         data, w, h = _render_clip(page, tuple(r + (-2, -2, 2, 2)))
         figs.append(ImageItem(bbox=tuple(r), page=page.number, data=data, ext="png", px_w=w, px_h=h,
@@ -538,10 +540,103 @@ def _display_math(page: pymupdf.Page, lines: list[Line], body: float) -> list[Im
     lines[:] = [l for l in lines if id(l) not in taken]
     return items
 
+
+# ----------------------------------------------------------------- layout-model regions
+_CAPTION_START = re.compile(r"^\s*(fig(?:ure)?s?\.?|table|tab\.|algorithm|listing)\s*[\dIVXA-Z]", re.I)
+
+
+def _center_in(bbox, region, pad: float = 1.0) -> bool:
+    cx, cy = (bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2
+    return region[0] - pad <= cx <= region[2] + pad and region[1] - pad <= cy <= region[3] + pad
+
+
+def _render(page: pymupdf.Page, bbox, kind: str, alt: str = "", dpi: int = 220) -> ImageItem:
+    clip = pymupdf.Rect(bbox[0] - 2, bbox[1] - 2, bbox[2] + 2, bbox[3] + 2) & page.rect
+    pix = page.get_pixmap(clip=clip, dpi=dpi, colorspace=pymupdf.csRGB)
+    data = pix.tobytes("png")
+    return ImageItem(bbox=tuple(bbox), page=page.number, data=data, ext="png", px_w=pix.width, px_h=pix.height,
+                     key=hashlib.sha1(data).hexdigest()[:16], kind=kind, alt=alt)
+
+
+def _drop_furniture(lines: list[Line], regions) -> list[Line]:
+    furn = [r.bbox for r in regions if r.label in ("page_header", "page_footer") and r.score >= 0.5]
+    return [l for l in lines if not any(_center_in(l.bbox, f) for f in furn)]
+
+
+def _ml_tables(page: pymupdf.Page, regions, tables: list[TableItem], area: float) -> list[TableItem]:
+    """Keep PyMuPDF tables the model agrees with; rebuild tables the model sees but PyMuPDF missed."""
+    treg = [r for r in regions if r.label == "table" and r.score >= 0.5]
+    textual = [r.bbox for r in regions if r.label in ("text", "section_header", "list_item", "title") and r.score >= 0.8]
+    kept = []
+    for t in tables:
+        agree = any(_overlap(t.bbox, r.bbox) > 0.3 * _area(t.bbox) for r in treg)
+        # drop a ruled "table" only when the model is confident the area is plain prose and sees no table
+        prose = sum(_overlap(t.bbox, b) for b in textual) > 0.7 * _area(t.bbox)
+        if agree or not prose:
+            kept.append(t)
+    words = None
+    for r in treg:
+        if any(_overlap(t.bbox, r.bbox) > 0.3 * _area(r.bbox) for t in kept):
+            continue
+        if words is None:
+            words = page.get_text("words")
+        grid = _grid_from_words(words, r.bbox)
+        if grid and len(grid) >= 2 and max(len(row) for row in grid) >= 2:
+            kept.append(TableItem(bbox=r.bbox, page=page.number, rows=grid))
+    return kept
+
+
+def _ml_formulas_figures(page: pymupdf.Page, regions, lines: list[Line], images: list[ImageItem],
+                         tables: list[TableItem], body_size: float = 10.0) -> list[ImageItem]:
+    out: list[ImageItem] = []
+    taken: set[int] = set()
+    for r in regions:
+        if r.score < 0.4 or r.label not in ("formula", "picture"):
+            continue
+        members = [l for l in lines if id(l) not in taken and _center_in(l.bbox, r.bbox)]
+        if any(_inside(t.bbox, r.bbox, 0.6) for t in tables):
+            continue
+        if r.label == "formula":
+            plain = sum(1 for l in members for w in re.findall(r"[A-Za-z]{4,}", l.text))
+            if plain >= 9:                       # a paragraph the model mistook for a formula
+                continue
+            alt = re.sub(r"\s+", " ", " ".join(m.text.strip() for m in sorted(members, key=lambda m: (round(m.y0 / 3), m.x0))))
+            bbox = r.bbox
+            if members:
+                bbox = (min(r.bbox[0], *(m.x0 for m in members)), min(r.bbox[1], *(m.y0 for m in members)),
+                        max(r.bbox[2], *(m.x1 for m in members)), max(r.bbox[3], *(m.y1 for m in members)))
+            out.append(_render(page, bbox, "equation", alt.replace("\ufffd", "").strip()))
+            taken.update(id(m) for m in members)
+        else:
+            if any(_overlap(i.bbox, r.bbox) > 0.5 * _area(r.bbox) for i in images):
+                continue                          # an embedded raster already covers most of it
+            caps = [c.bbox for c in regions if c.label == "caption" and c.score >= 0.5]
+            # captions and prose inside the box are real text: never swallow them into the picture
+            members = [m for m in members if not any(_center_in(m.bbox, c) for c in caps)
+                       and not _CAPTION_START.match(m.text) and m.size < 1.15 * body_size]   # headings stay text
+            words = [len(m.text.split()) for m in members]
+            if members and (sum(words) >= 80 or sum(words) / len(words) >= 6):
+                continue                          # a text box, not a figure: keep it as text
+            out.append(_render(page, r.bbox, "figure", dpi=200))
+            taken.update(id(m) for m in members)
+    lines[:] = [l for l in lines if id(l) not in taken]
+    return out
+
+
+def _assign_labels(lines: list[Line], regions) -> None:
+    for l in lines:
+        best, best_key = None, (0.0, 0.0)
+        for r in regions:
+            ov = _overlap(l.bbox, r.bbox) / max(_area(l.bbox), 1e-6)
+            if ov >= 0.5 and (ov, r.score) > best_key:
+                best, best_key = r, (ov, r.score)
+        if best is not None:
+            l.ml_label, l.ml_id = best.label, best.id
+
 # ------------------------------------------------------------------------- main
 def extract_page(doc: pymupdf.Document, pno: int, *, with_images: bool = True,
                  ocr: Optional[OcrEngine] = None, ocr_mode: str = "auto", body_size: float = 10.0,
-                 equations: bool = True) -> PageData:
+                 equations: bool = True, regions=None) -> PageData:
     page = doc[pno]
     rect = page.rect
     pd = PageData(pno, rect.width, rect.height)
@@ -575,14 +670,21 @@ def extract_page(doc: pymupdf.Document, pno: int, *, with_images: bool = True,
         images = [i for i in images if i not in covers]           # decorative full-page background
 
     tables = _extract_tables(page, page_area)
+    if regions is not None:
+        tables = _ml_tables(page, regions, tables, page_area)
+        raw = _drop_furniture(raw, regions)
     if tables:
         raw = [l for l in raw if not any(_inside(l.bbox, t.bbox, 0.5) for t in tables)]
     lines = _merge_rows(raw, 2.5, -10.0) if pd.ocr else _merge_rows(raw)
     if not pd.ocr:
         _attach_links(page, lines)
+    if regions is not None and not pd.ocr and with_images:
+        images += _ml_formulas_figures(page, regions, lines, images, tables, body_size)
     if with_images:
-        images += _vector_figures(page, lines, tables, images)
-    if equations and with_images and not pd.ocr:
-        images += _display_math(page, lines, body_size)
+        images += _vector_figures(page, lines, tables, images)        # heuristics catch what the model missed
+        if equations and not pd.ocr:
+            images += _display_math(page, lines, body_size)
+    if regions is not None and not pd.ocr:
+        _assign_labels(lines, regions)
     pd.lines, pd.images, pd.tables = lines, images, tables
     return pd

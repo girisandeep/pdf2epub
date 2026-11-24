@@ -33,6 +33,7 @@ class ConversionOptions:
     split_level: Optional[int] = None        # heading level that starts a new chapter file
     keep_running_heads: bool = False
     footnotes: bool = True
+    ml: str = "off"                          # off | on : deep-learning layout analysis (needs docling)
     equations: bool = True                   # render display equations as images (alt text kept)
     use_outline: bool = True
     max_chapter_chars: int = 350_000
@@ -180,10 +181,15 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
     # ---- 1. extraction -------------------------------------------------------
     ocr = OcrEngine(opts.ocr_lang) if opts.ocr != "off" else None
     pages = []
+    regions = None
+    if opts.ml != "off":
+        from .ml import LayoutDetector
+        regions = LayoutDetector().detect(src, min(selected), max(selected))
     body_size = _sample_body_size(doc, selected)
     for pno in selected:
         pd = extract_page(doc, pno, with_images=opts.images, ocr=ocr, ocr_mode=opts.ocr,
-                          body_size=body_size, equations=opts.equations)
+                          body_size=body_size, equations=opts.equations,
+                          regions=(regions.get(pno, []) if regions is not None else None))
         pages.append(pd)
         if pd.ocr:
             rep.ocr_pages += 1

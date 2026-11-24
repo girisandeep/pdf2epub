@@ -163,16 +163,20 @@ def strip_running(pages: list[PageData], c: Counters, keep: bool = False) -> Non
 def extract_footnotes(page: PageData, stats: DocStats) -> list[FootnoteDef]:
     """Split a page's footnote area from its body, but only when body markers confirm it."""
     body = stats.body_size
-    lower = [l for l in sorted(page.lines, key=lambda l: l.y0) if l.y0 > 0.5 * page.height]
-    start = None
-    for l in lower:
-        if l.size <= body * 0.93 and footnote_marker(l):
-            start = l.y0
-            break
-    if start is None:
-        return []
-    zone = [l for l in sorted(page.lines, key=lambda l: (l.y0, l.x0))
-            if l.y0 >= start - 1 and l.size <= body * 0.95]
+    ml_zone = [l for l in sorted(page.lines, key=lambda l: (l.y0, l.x0)) if l.ml_label == "footnote"]
+    if ml_zone:
+        start, zone = ml_zone[0].y0, ml_zone
+    else:
+        lower = [l for l in sorted(page.lines, key=lambda l: l.y0) if l.y0 > 0.5 * page.height]
+        start = None
+        for l in lower:
+            if l.size <= body * 0.93 and footnote_marker(l):
+                start = l.y0
+                break
+        if start is None:
+            return []
+        zone = [l for l in sorted(page.lines, key=lambda l: (l.y0, l.x0))
+                if l.y0 >= start - 1 and l.size <= body * 0.95]
     defs: list[FootnoteDef] = []
     for l in zone:
         mk = footnote_marker(l)
@@ -235,6 +239,15 @@ def _is_break(prev: Line, ln: Line, cur: Block, left: float, right: float, st: D
     if ln.region != prev.region:
         return True
     size = max(ln.size, prev.size)
+    ml_known = prev.ml_id >= 0 and ln.ml_id >= 0
+    if ml_known and prev.ml_id != ln.ml_id:
+        # The model's region edge is only trusted when the geometry agrees: a different kind of region,
+        # extra vertical space, or a line that ended early.  Otherwise a boundary that slices through
+        # the middle of a paragraph would leave one-line orphans.
+        gap = base_y(ln) - base_y(prev)
+        if prev.ml_label != ln.ml_label or gap > size * (st.leading + 0.12) or not prev.text.rstrip().endswith(
+                ("-", "\u00ad", ",")) and _ends_complete(prev) and prev.x1 < right - 2.5 * size:
+            return True
     dy = base_y(ln) - base_y(prev)
     if dy < -0.3 * size:
         return True
@@ -340,8 +353,84 @@ def _title_match(a: str, b: str) -> float:
     return r
 
 
+NUMBERED_RE = re.compile(r"^\s*(?:(?:chapter|section|part)\s+)?(\d+(?:\.\d+){0,4}|[A-Z](?:\.\d+){1,4})[.)]?\s+\S", re.I)
+
+
+def _ml_heading_level(b: Block, key_level: dict) -> int | None:
+    m = NUMBERED_RE.match(b.text)
+    if m and "." in m.group(1).strip("."):
+        return min(m.group(1).strip(".").count(".") + 1, 4)
+    return key_level.get(_bkey(b))
+
+
+# confident furniture is already removed upstream, so only labels that truly exclude a heading veto it
+NON_HEADING_LABELS = {"list_item", "caption", "footnote", "formula", "code", "table"}
+
+
+def _classify_with_layout(blocks: list[Block], c: Counters) -> list[Block]:
+    """Model-labelled headers are authoritative; levels come from numbering ("3.2.1" -> 3) and style.
+
+    Blocks the model calls plain text may still be headings the model missed, but only when they share
+    the exact style of >=2 confirmed headings and come after the first confirmed heading (so the
+    author block on a title page is never promoted).
+    """
+    heads = [b for b in blocks if b.kind == "para" and b.ml_label in ("section_header", "title")
+             and 0 < len(b.lines) <= 5 and len(b.text) <= 220 and not list_marker_bullet(b.text)]
+    votes: dict[tuple, Counter] = defaultdict(Counter)
+    for b in heads:
+        m = NUMBERED_RE.match(b.text)
+        if m:
+            votes[_bkey(b)][min(m.group(1).strip(".").count(".") + 1, 4)] += 1
+    key_level = {k: v.most_common(1)[0][0] for k, v in votes.items()}
+    sizes = sorted({_bkey(b)[0] for b in heads}, reverse=True)
+    levels: dict[int, int] = {}
+    for b in heads:
+        if b.ml_label == "title":
+            lvl = 1
+        else:
+            lvl = _ml_heading_level(b, key_level)
+            if lvl is None:
+                if SECTION_WORDS.match(b.text.strip()):
+                    lvl = 1 if not key_level else min(key_level.values())
+                else:
+                    lvl = min(sizes.index(_bkey(b)[0]) + 1, 4)
+        levels[id(b)] = lvl
+        b.kind, b.level, b.marker = "heading", lvl, None
+    # headings the model missed: same visual style as confirmed ones
+    style_votes: dict[tuple, Counter] = defaultdict(Counter)
+    for b in heads:
+        style_votes[_bkey(b)][levels[id(b)]] += 1
+    confirmed = [i for i, b in enumerate(blocks) if b.kind == "heading"]
+    # the body starts at the first numbered / standard section heading ("1 Introduction", "Abstract");
+    # anything before it is title-page matter (authors, affiliations) and is never promoted
+    first = next((i for i in confirmed if NUMBERED_RE.match(blocks[i].text) or SECTION_WORDS.match(blocks[i].text.strip())),
+                 confirmed[0] if confirmed else len(blocks))
+    extra = 0
+    for i, b in enumerate(blocks):
+        if i <= first or b.kind != "para" or b.ml_label in NON_HEADING_LABELS or not _candidate(b):
+            continue
+        k = _bkey(b)
+        v = style_votes.get(k)
+        t = b.text.strip()
+        if v and sum(v.values()) >= 2 and len(t) <= 120 and not list_marker_bullet(t) \
+                and not CAPTION_RE.match(t) and not t.endswith((".", ",", ";")) and k[1]:
+            b.kind, b.level, b.marker = "heading", v.most_common(1)[0][0], None
+            extra += 1
+    c.heading_source = "layout-model"
+    c.headings = len(heads) + extra
+    return blocks
+
+
+def list_marker_bullet(text: str) -> bool:
+    m = list_marker(text)
+    return bool(m and m[0] == "bullet")
+
+
 def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters) -> list[Block]:
     body = st.body_size
+    has_ml = any(l.ml_label for b in blocks for l in b.lines)
+    if has_ml and len(toc) < 2:
+        return _classify_with_layout(blocks, c)
     by_page: dict[int, list[Block]] = defaultdict(list)
     for b in blocks:
         by_page[b.page].append(b)
@@ -384,6 +473,8 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
         # so title/author blocks on the cover page are not mistaken for headings)
         first_hit = next((i for i, b in enumerate(blocks) if b.kind == "heading"), len(blocks))
         for bi, b in enumerate(blocks):
+            if has_ml and b.ml_label in NON_HEADING_LABELS:
+                continue
             if (bi > first_hit or SECTION_WORDS.match(b.text.strip())) and b.kind == "para" and _candidate(b):
                 k = _bkey(b)
                 if k in key_levels:
@@ -560,7 +651,8 @@ def attach_captions(blocks: list[Block]) -> list[Block]:
         order = (i + 1, i - 1) if b.kind == "image" else (i - 1, i + 1)
         for j in order:
             if 0 <= j < len(blocks) and j not in drop and blocks[j].kind == "para" \
-                    and CAPTION_RE.match(blocks[j].text) and len(blocks[j].lines) <= 14 \
+                    and (CAPTION_RE.match(blocks[j].text) or blocks[j].ml_label == "caption") \
+                    and len(blocks[j].lines) <= 14 \
                     and len(blocks[j].text) <= 1400 and blocks[j].page == b.page:
                 b.caption = blocks[j].lines
                 drop.add(j)

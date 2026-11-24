@@ -41,13 +41,45 @@ links — epubcheck itself needs Java, which isn't assumed). `tests/accuracy.py 
 recall/precision against the PDF text layer. On the arXiv papers used during development
 (*Attention Is All You Need*, GPT-3) recall is 99%+ after accounting for text inside rasterised figures.
 
+## Deep-learning layout mode (`--ml`)
+
+```bash
+pip install -e '.[ml]'        # pulls docling + torch (~1.4 GB); weights come from Hugging Face on first use
+pdf2epub paper.pdf --ml
+```
+Docling's RT-DETR layout model (`docling-layout-heron`, MIT) labels page regions: title, section header, text,
+list item, caption, footnote, formula, picture, table, page header/footer. **Only regions and labels come from the
+model; all text, fonts and geometry still come from the PDF**, so the model can never mis-read a character.
+Predictions are cached in `~/.cache/pdf2epub/layout/`, so re-runs are fast.
+
+How the labels are used, and how they are kept from doing harm:
+
+* **Headings**: a model-labelled section header is a heading; level from numbering (`3.2.1` → h3) and style.
+  A block the model calls plain text can still be promoted if it shares the exact style of ≥2 confirmed headings
+  and comes after the body starts, which recovers misses without promoting title-page author lines.
+  List items, captions and footnotes can never become headings (the heuristics did this: "• Holiday gifts…").
+* **Paragraphs**: a model region edge only splits a paragraph when the geometry agrees (different label, extra
+  space, or an early-ending line), so a boundary cutting through the middle of a paragraph leaves no orphans.
+* **Headers/footers/footnotes**: regions confidently labelled as page furniture are removed; footnote regions
+  feed the footnote linker.
+* **Equations/figures**: formula and picture regions are rasterised, then the heuristics run on what is left
+  (union of model and heuristics). Captions and boxed prose inside a picture region are never swallowed.
+* **Tables**: the model confirms PyMuPDF's tables and rebuilds ones PyMuPDF missed; a ruled "table" is dropped
+  only if the model is confident the area is prose.
+
+Measured on the 10-document corpus (`tests/run_corpus.py`, heuristics → `--ml`): stray fragments `vae` 29%→14%,
+`resnet` 14%→8%, `adam` 28%→20%, `bert` 10%→8%, `thinkpython` 16%→14%; math junk `vae` 19→8, `adam` 33→23;
+`irs_pub` headings 100→85 by removing ~14 list items wrongly promoted to headings; recall equal or better
+(−0.5 pt on `thinkpython`/−0.1 pt on `wiki_de`, which is page headers/footers now correctly removed).
+Speed: roughly 1 s/page on Apple-silicon CPU/MPS for the model.
+
 ## Regression corpus
 
 `python tests/fetch_corpus.py` downloads 10 varied open documents (2-column papers, math-heavy papers, a
 244-page book, government PDF, Wikipedia in two languages). `python tests/run_corpus.py` converts them all and
 prints recall, precision, EPUB validity, stray-fragment %, leftover math junk and duplicate paragraphs, and
 fails on regressions against `tests/corpus_baseline.json` (`--update-baseline` to accept new numbers;
-`--no-equations` for before/after comparisons).
+`--no-equations` for before/after comparisons). With `--ml` it uses `tests/corpus_baseline_ml.json`.
 
 ## Known limits
 

@@ -112,3 +112,50 @@ def test_display_equation_becomes_image_with_alt(pdfs):
     paras = [" ".join(p.itertext()) for p in chapters[0].xpath("//x:p", namespaces=NS)]
     assert len(paras) == 2 and paras[0].endswith("as follows:") and paras[1].startswith("where x and y")
     assert not chapters[0].xpath("//x:sup|//x:sub", namespaces=NS)      # no script soup left in the text
+
+
+def test_ml_layout_regions_drive_structure(pdfs, monkeypatch):
+    """The model only supplies regions/labels; a stub detector exercises the whole ML code path offline."""
+    import pymupdf
+    from pdf2epub import ml
+
+    page = pymupdf.open(str(pdfs / "equations.pdf"))[0]
+    num = page.search_for("(1)")[0]
+    words = page.get_text("words")
+    top = min(w[1] for w in words)
+    regions = {0: [
+        ml.Region("text", (70, top - 2, 540, 735 - 0), 0.99, 1),                 # paragraph 1
+        ml.Region("formula", (240, num.y0 - 4, 520, num.y1 + 4), 0.95, 2),
+        ml.Region("text", (70, num.y1 + 20, 540, 780), 0.99, 3),                  # paragraph 2
+    ]}
+    regions[0][0] = ml.Region("text", (70, top - 2, 540, num.y0 - 20), 0.99, 1)
+
+    class Stub:
+        def detect(self, path, first, last):
+            return regions
+
+    monkeypatch.setattr(ml, "LayoutDetector", Stub)
+    rep, chapters, _ = run(pdfs, "equations", cover="off", ml="on")
+    eq = chapters[0].xpath("//x:img[@class='equation']", namespaces=NS)
+    assert len(eq) == 1 and "(1)" in eq[0].get("alt")
+    paras = [" ".join(p.itertext()) for p in chapters[0].xpath("//x:p", namespaces=NS)]
+    assert len(paras) == 2 and paras[1].startswith("where x and y")
+
+
+def test_ml_section_header_label_makes_heading(pdfs, monkeypatch):
+    import pymupdf
+    from pdf2epub import ml
+
+    page = pymupdf.open(str(pdfs / "hyphen.pdf"))[0]
+    last = page.search_for("A new paragraph starts here")[0]
+    regions = {0: [ml.Region("section_header", (60, last.y0 - 2, 540, last.y1 + 2), 0.95, 1),
+                   ml.Region("text", (60, 60, 540, last.y0 - 8), 0.95, 2)]}
+
+    class Stub:
+        def detect(self, path, first, last_):
+            return regions
+
+    monkeypatch.setattr(ml, "LayoutDetector", Stub)
+    rep, chapters, _ = run(pdfs, "hyphen", cover="off", ml="on")
+    heads = ["".join(h.itertext()) for h in chapters[0].xpath("//x:h1|//x:h2|//x:h3", namespaces=NS)]
+    assert rep.heading_source == "layout-model" and heads == ["A new paragraph starts here and is separate."]

@@ -46,6 +46,8 @@ class Item:
 @dataclass
 class Line(Item):
     spans: list[Span] = field(default_factory=list)
+    ml_label: str = ""          # layout-model label of the region containing this line
+    ml_id: int = -1             # id of that region (-1: none / ML off)
 
     @property
     def text(self) -> str:
@@ -131,6 +133,11 @@ class Block:
     anchor: str = ""
     entries: list = field(default_factory=list)   # toc entries
     synthetic_text: Optional[str] = None
+
+    @property
+    def ml_label(self) -> str:
+        labels = [l.ml_label for l in self.lines if l.ml_label]
+        return max(set(labels), key=labels.count) if labels else ""
 
     @property
     def text(self) -> str:
