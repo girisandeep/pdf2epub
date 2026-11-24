@@ -74,7 +74,7 @@ def evaluate(args: tuple) -> dict:
     got = toks(" ".join(body))
     common = sum((ref & got).values())
     texts = [t for t, _ in paras if t]
-    frag = sum(1 for t in texts if len(t) < 40 and not t.endswith((".", "?", "!", ":", '"', "”")))
+    frag = sum(1 for t in texts if len(t) < 40 and not t.endswith((".", "?", "!", ":", '"', "”", "]", ")")))
     dup = sum(1 for a, b in zip(texts, texts[1:]) if a == b and len(a) >= 60)
     return {
         "pages": rep.pages, "secs": round(secs, 1), "chapters": rep.chapters, "headings": rep.headings,
