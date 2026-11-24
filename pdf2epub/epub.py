@@ -144,6 +144,11 @@ def write_epub(book: EpubBook, path: str) -> None:
            f'<dc:identifier id="bookid">{escape(book.identifier)}</dc:identifier>'
            f'<dc:title>{escape(book.title)}</dc:title>{creator}<dc:language>{lang}</dc:language>'
            f'<meta property="dcterms:modified">{now}</meta>'
+           '<meta property="schema:accessMode">textual</meta>'
+           '<meta property="schema:accessMode">visual</meta>'
+           '<meta property="schema:accessibilityFeature">structuralNavigation</meta>'
+           '<meta property="schema:accessibilityFeature">tableOfContents</meta>'
+           '<meta property="schema:accessibilityFeature">alternativeText</meta>'
            + ('<meta name="cover" content="cover-image"/>' if book.cover else "") +
            f'</metadata>\n<manifest>\n{chr(10).join(manifest)}\n</manifest>\n'
            f'<spine toc="ncx">\n{chr(10).join(spine)}\n</spine>\n</package>\n')
