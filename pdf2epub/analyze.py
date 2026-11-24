@@ -347,7 +347,12 @@ def _candidate(b: Block) -> bool:
     t = b.text
     if len(t) > 200 or len(t.split()) > 28 or t.rstrip().endswith(","):
         return False
-    return not any(l.mono for l in b.lines)
+    if any(l.mono for l in b.lines):
+        return False
+    ts = t.strip()
+    if _ALGO_KEYWORD.match(ts) or re.match(r"^end\s+(if|for|while|loop|function|procedure)$", ts, re.I):
+        return False
+    return True
 
 
 def _strip_num(t: str) -> str:
@@ -804,6 +809,35 @@ def _is_pseudocode(b: Block) -> bool:
     return False
 
 
+def _algo_scannable(b: Block) -> bool:
+    if b.kind in ("para", "algorithm"):
+        return True
+    return b.kind == "image" and b.image is not None and b.image.kind == "equation"
+
+
+_ALGO_TERMINATOR = re.compile(
+    r"^\s*(return\b|end\s+(if|for|while|loop|function|procedure))", re.I)
+
+
+def _algo_should_stop(blocks: list[Block], j: int, saw_terminator: bool) -> bool:
+    bj = blocks[j]
+    if not bj.lines:
+        return True
+    if saw_terminator:
+        return True
+    prev_y1 = None
+    for k in range(j - 1, -1, -1):
+        if blocks[k].lines:
+            prev_y1 = blocks[k].lines[-1].y1
+            break
+        if blocks[k].kind == "image" and blocks[k].image:
+            prev_y1 = blocks[k].image.bbox[3]
+            break
+    if prev_y1 is None:
+        return False
+    return bj.y0 - prev_y1 > bj.lines[0].size * 3
+
+
 def detect_algorithms(blocks: list[Block]) -> list[Block]:
     """Detect algorithm/pseudocode blocks by structural patterns (Require/←/while...do)."""
     out: list[Block] = []
@@ -819,35 +853,48 @@ def detect_algorithms(blocks: list[Block]) -> list[Block]:
                 run_start = i
             j = run_start
             pseudocode_count = 0
-            while j < n and blocks[j].kind in ("para", "algorithm"):
+            saw_term = False
+            while j < n and _algo_scannable(blocks[j]):
                 if _is_pseudocode(blocks[j]):
                     pseudocode_count += 1
+                    if _ALGO_TERMINATOR.match(blocks[j].text.strip()):
+                        saw_term = True
+                elif blocks[j].kind == "image":
+                    pass
                 elif pseudocode_count == 0:
                     break
+                elif _algo_should_stop(blocks, j, saw_term):
+                    break
                 else:
-                    gap = blocks[j].y0 - blocks[j - 1].lines[-1].y1 if blocks[j - 1].lines else 0
-                    if gap > blocks[j].lines[0].size * 3 if blocks[j].lines else True:
-                        break
+                    saw_term = False
                 j += 1
             if pseudocode_count >= 2 and j > run_start:
                 merged = Block("algorithm", blocks[run_start].page,
                                region=blocks[run_start].region,
                                y0=blocks[run_start].y0)
                 for k in range(run_start, j):
-                    merged.lines.extend(blocks[k].lines)
+                    if blocks[k].kind != "image":
+                        merged.lines.extend(blocks[k].lines)
+                    else:
+                        out.append(blocks[k])
                 out.append(merged)
                 i = j
                 continue
         elif b.kind == "para" and _ALGO_KEYWORD.match(b.text.strip()):
             j = i
             pseudocode_count = 0
-            while j < n and blocks[j].kind in ("para", "algorithm"):
+            saw_term = False
+            while j < n and _algo_scannable(blocks[j]):
                 if _is_pseudocode(blocks[j]):
                     pseudocode_count += 1
+                    if _ALGO_TERMINATOR.match(blocks[j].text.strip()):
+                        saw_term = True
+                elif blocks[j].kind == "image":
+                    pass
                 elif pseudocode_count > 0:
-                    gap = blocks[j].y0 - blocks[j - 1].lines[-1].y1 if blocks[j - 1].lines else 0
-                    if gap > blocks[j].lines[0].size * 3 if blocks[j].lines else True:
+                    if _algo_should_stop(blocks, j, saw_term):
                         break
+                    saw_term = False
                 else:
                     break
                 j += 1
@@ -856,7 +903,10 @@ def detect_algorithms(blocks: list[Block]) -> list[Block]:
                                region=blocks[i].region,
                                y0=blocks[i].y0)
                 for k in range(i, j):
-                    merged.lines.extend(blocks[k].lines)
+                    if blocks[k].kind != "image":
+                        merged.lines.extend(blocks[k].lines)
+                    else:
+                        out.append(blocks[k])
                 out.append(merged)
                 i = j
                 continue
