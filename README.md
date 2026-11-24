@@ -56,4 +56,7 @@ fails on regressions against `tests/corpus_baseline.json` (`--update-baseline` t
 * Tables without any ruling lines and with no multi-line cells are not detected and stay as text.
 * Reading order for heavily irregular layouts (magazines, sidebars) is a best effort.
 * OCR quality depends on the engine; install Tesseract for the best results.
-* PyMuPDF is AGPL-licensed; check that is compatible with how you distribute this tool.
+
+## License
+
+AGPL-3.0-or-later (see `LICENSE`), matching the license of PyMuPDF, which this tool depends on.
