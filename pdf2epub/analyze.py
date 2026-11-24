@@ -650,6 +650,56 @@ def merge_continuations(blocks: list[Block], c: Counters) -> list[Block]:
     return out
 
 
+_SECTION_NUM = re.compile(r"^\s*\d+(\.\d+)*[\s.]")
+
+
+def _is_real_heading(b: Block) -> bool:
+    t = b.text.strip()
+    return bool(SECTION_WORDS.match(t) or _SECTION_NUM.match(t))
+
+
+def merge_title_page(blocks: list[Block]) -> list[Block]:
+    """Merge short author/affiliation/email fragments on the first page into one block."""
+    if not blocks:
+        return blocks
+    first_page = blocks[0].page
+    title_idx = None
+    end = None
+    for i, b in enumerate(blocks):
+        if b.page != first_page:
+            end = i
+            break
+        if b.kind == "heading" and title_idx is None:
+            if _is_real_heading(b):
+                return blocks
+            title_idx = i
+            continue
+        if title_idx is not None:
+            if b.kind == "heading" and _is_real_heading(b):
+                end = i
+                break
+            if b.kind == "para" and len(b.text) >= 120:
+                end = i
+                break
+    if title_idx is None:
+        return blocks
+    if end is None:
+        end = i + 1
+    start = title_idx + 1
+    run = [(j, blocks[j]) for j in range(start, end)
+           if blocks[j].page == first_page and blocks[j].kind in ("para", "heading")
+           and len(blocks[j].text.rstrip()) < 80]
+    if len(run) < 3:
+        return blocks
+    merged = run[0][1]
+    merged.kind = "para"
+    for _, b in run[1:]:
+        merged.lines += b.lines
+    merged.full_last = run[-1][1].full_last
+    remove = {j for j, _ in run[1:]}
+    return [b for i, b in enumerate(blocks) if i not in remove]
+
+
 def build_lists(blocks: list[Block], c: Counters) -> list[Block]:
     i, n = 0, len(blocks)
     while i < n:
