@@ -1,0 +1,332 @@
+"""Orchestrates the PDF -> EPUB pipeline."""
+from __future__ import annotations
+
+import logging
+import os
+import re
+from dataclasses import asdict, dataclass, field
+from typing import Optional
+
+import pymupdf
+
+from . import analyze as A
+from .epub import Chapter, EpubBook, NavEntry, write_epub
+from .extract import OcrEngine, extract_page
+from .layout import reading_order
+from .model import Block, FootnoteDef
+from .render import RenderCtx, inline_html, render_blocks
+from .text import guess_language, norm_title
+
+log = logging.getLogger("pdf2epub")
+
+
+@dataclass
+class ConversionOptions:
+    title: Optional[str] = None
+    author: Optional[str] = None
+    language: Optional[str] = None
+    pages: Optional[str] = None              # e.g. "1-10,15"
+    images: bool = True
+    cover: str = "auto"                      # auto | on | off
+    ocr: str = "auto"                        # auto | off | force
+    ocr_lang: str = "eng"
+    split_level: Optional[int] = None        # heading level that starts a new chapter file
+    keep_running_heads: bool = False
+    footnotes: bool = True
+    equations: bool = True                   # render display equations as images (alt text kept)
+    use_outline: bool = True
+    max_chapter_chars: int = 350_000
+    nav_depth: int = 3
+    min_chapter_chars: int = 2500   # fold tiny sections into the following file
+
+
+@dataclass
+class ConversionReport:
+    source: str = ""
+    output: str = ""
+    pages: int = 0
+    chapters: int = 0
+    headings: int = 0
+    heading_source: str = ""
+    lists: int = 0
+    tables: int = 0
+    images: int = 0
+    footnotes: int = 0
+    equations: int = 0
+    running_lines_removed: int = 0
+    merged_paragraphs: int = 0
+    ocr_pages: int = 0
+    ocr_backend: str = ""
+    language: str = ""
+    title: str = ""
+    warnings: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+def parse_pages(spec: Optional[str], n: int) -> list[int]:
+    if not spec:
+        return list(range(n))
+    out: list[int] = []
+    for part in spec.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        m = re.fullmatch(r"(\d*)-(\d*)", part)
+        if m:
+            a = int(m.group(1) or 1)
+            b = int(m.group(2) or n)
+            out.extend(range(a - 1, min(b, n)))
+        elif part.isdigit():
+            out.append(int(part) - 1)
+        else:
+            raise ValueError(f"bad page spec: {part!r}")
+    return sorted({p for p in out if 0 <= p < n})
+
+
+_BAD_TITLE = re.compile(r"^(untitled|microsoft word|\.?pdf|slide \d+|document\d*|\s*)$|\.(docx?|pdf|indd|tex|pptx?)$", re.I)
+
+
+def _clean_title(t: Optional[str]) -> Optional[str]:
+    if not t:
+        return None
+    t = t.strip()
+    t = re.sub(r"^Microsoft Word - ", "", t)
+    return None if _BAD_TITLE.search(t) else t
+
+
+def _heading_plain(b: Block, ctx: RenderCtx) -> str:
+    if b.synthetic_text is not None:
+        return b.synthetic_text.strip()
+    html = inline_html(b.lines, ctx, strip_bold=True)
+    html = re.sub(r"<[^>]+>", "", html)
+    return html.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").strip()
+
+
+def _strip_numbering(t: str) -> str:
+    return re.sub(r"^(chapter|part|section)?\s*([\dIVXLC]+[.)]?\s+|[\d.]+\s+)", "", norm_title(t)).strip()
+
+
+def _split_chapters(blocks: list[Block], opts: ConversionOptions, ctx: RenderCtx):
+    levels = [b.level for b in blocks if b.kind == "heading"]
+    split = opts.split_level
+    if not split:
+        for lv in range(1, 7):
+            if levels.count(lv) >= 2:
+                split = lv
+                break
+    chapters: list[dict] = []
+    cur: dict | None = None
+
+    def new(title: str, head: Optional[Block]):
+        nonlocal cur
+        cur = {"title": title, "blocks": [], "head": head, "chars": 0}
+        chapters.append(cur)
+
+    for b in blocks:
+        if b.kind == "heading" and split and b.level <= split:
+            new(_heading_plain(b, ctx) or "Untitled", b)
+        elif cur is None:
+            new("", None)
+        cur["blocks"].append(b)
+        cur["chars"] += len(b.text) if b.kind != "heading" else 0
+        # keep chapter files a sane size: break on subheadings, or on any paragraph when huge
+        if cur["chars"] > opts.max_chapter_chars and b.kind in ("para", "li"):
+            cur = None
+            new("", None)
+            chapters[-1]["cont"] = True
+    chapters = [c for c in chapters if c["blocks"]]
+    merged: list[dict] = []
+    for c in chapters:
+        if merged and merged[-1]["chars"] < opts.min_chapter_chars and not c.get("cont"):
+            prev = merged[-1]
+            prev["blocks"] += c["blocks"]
+            prev["chars"] += c["chars"]
+            continue
+        merged.append(c)
+    if len(merged) > 1 and merged[-1]["chars"] < opts.min_chapter_chars // 2 and not merged[-1].get("cont"):
+        last = merged.pop()
+        merged[-1]["blocks"] += last["blocks"]
+        merged[-1]["chars"] += last["chars"]
+    return merged, split
+
+
+def _sample_body_size(doc, selected: list[int]) -> float:
+    from collections import Counter
+    c: Counter = Counter()
+    step = max(1, len(selected) // 12)
+    for pno in selected[::step]:
+        for b in doc[pno].get_text("dict")["blocks"]:
+            for l in b.get("lines", []):
+                for s in l["spans"]:
+                    c[round(s["size"] * 2) / 2] += len(s["text"].strip())
+    return max(c, key=c.get) if c else 10.0
+
+
+def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOptions] = None) -> ConversionReport:
+    opts = options or ConversionOptions()
+    dst = dst or os.path.splitext(src)[0] + ".epub"
+    rep = ConversionReport(source=src, output=dst)
+    doc = pymupdf.open(src)
+    if doc.needs_pass:
+        raise PermissionError("PDF is password protected")
+    selected = parse_pages(opts.pages, doc.page_count)
+    if not selected:
+        raise ValueError("no pages selected")
+    rep.pages = len(selected)
+    counters = A.Counters()
+
+    # ---- 1. extraction -------------------------------------------------------
+    ocr = OcrEngine(opts.ocr_lang) if opts.ocr != "off" else None
+    pages = []
+    body_size = _sample_body_size(doc, selected)
+    for pno in selected:
+        pd = extract_page(doc, pno, with_images=opts.images, ocr=ocr, ocr_mode=opts.ocr,
+                          body_size=body_size, equations=opts.equations)
+        pages.append(pd)
+        if pd.ocr:
+            rep.ocr_pages += 1
+        elif any(i.kind == "page" for i in pd.images):
+            rep.warnings.append(f"page {pno + 1} appears scanned and no OCR engine is available; page image embedded")
+    if ocr and rep.ocr_pages:
+        rep.ocr_backend = ocr.backend or ""
+
+    # ---- 2. cover + metadata -------------------------------------------------
+    cover_bytes = None
+    first = pages[0]
+    first_words = sum(len(l.text.split()) for l in first.lines)
+    want_cover = opts.cover == "on" or (opts.cover == "auto" and (first_words <= 40 or
+                                        any(i.width * i.height > 0.5 * first.width * first.height for i in first.images)))
+    if want_cover and opts.cover != "off":
+        pix = doc[first.number].get_pixmap(dpi=130, colorspace=pymupdf.csRGB)
+        cover_bytes = pix.tobytes("jpeg", jpg_quality=88)
+        if first_words <= 40 and not first.ocr and len(pages) > 1:
+            pages = pages[1:]          # the cover already shows this page
+    meta = doc.metadata or {}
+    title = opts.title or _clean_title(meta.get("title"))
+    author = opts.author or (meta.get("author") or "").strip() or None
+
+    # ---- 3. statistics & cleanup --------------------------------------------
+    stats = A.compute_stats(pages)
+    A.strip_running(pages, counters, keep=opts.keep_running_heads)
+    fn_defs: dict[tuple[int, str], FootnoteDef] = {}
+    if opts.footnotes:
+        for p in pages:
+            for d in A.extract_footnotes(p, stats):
+                fn_defs[(p.number, d.marker)] = d
+        counters.footnotes = len(fn_defs)
+
+    # ---- 4. reading order & segmentation -------------------------------------
+    blocks: list[Block] = []
+    region = 0
+    for p in pages:
+        items = [*p.lines, *p.images, *p.tables]
+        ordered, region = reading_order(items, region)
+        blocks += A.segment_page(ordered, p.number, stats)
+    counters.tables = sum(1 for b in blocks if b.kind == "table")
+    counters.images = sum(1 for b in blocks if b.kind == "image")
+
+    # ---- 5. structure ---------------------------------------------------------
+    toc = []
+    if opts.use_outline:
+        try:
+            sel = set(selected)
+            toc = [t for t in doc.get_toc(simple=False) if t[2] - 1 in sel and t[1].strip()]
+        except Exception:
+            toc = []
+    blocks = A.classify_headings(blocks, toc, stats, counters)
+    detected_title = A.detect_title(blocks, stats)
+    blocks = A.merge_continuations(blocks, counters)
+    blocks = A.demote_pseudo_code(blocks)
+    blocks = A.build_lists(blocks, counters)
+    blocks = A.detect_toc(blocks, counters)
+    blocks = A.attach_captions(blocks)
+    blocks = [b for b in blocks if not (b.kind == "para" and not b.text.strip())]
+
+    # ---- 6. metadata fallbacks -------------------------------------------------
+    if not title and detected_title:
+        title = detected_title
+    if not title:
+        h = next((b for b in blocks if b.kind == "heading" and b.page == blocks[0].page), None)
+        if h is None:
+            h = next((b for b in blocks if b.kind == "heading"), None)
+        ctx0 = RenderCtx(stats)
+        title = _heading_plain(h, ctx0) if h is not None else None
+    title = title or os.path.splitext(os.path.basename(src))[0]
+    sample = " ".join(b.text for b in blocks[:200] if b.kind == "para")
+    lang = opts.language
+    if not lang:
+        try:
+            lang = doc.xref_get_key(doc.pdf_catalog(), "Lang")[1].strip("() ").split("-")[0].lower() or None
+        except Exception:
+            lang = None
+    lang = lang if lang and re.fullmatch(r"[a-z]{2,3}", lang) else guess_language(sample)
+    rep.title, rep.language = title, lang
+
+    # ---- 7. chapters, ids, images ----------------------------------------------
+    ctx = RenderCtx(stats, footnotes=fn_defs)
+    chapters, split = _split_chapters(blocks, opts, ctx)
+    book = EpubBook(title=title, language=lang, author=author, cover=cover_bytes)
+
+    n_img = 0
+    for b in blocks:
+        if b.kind == "image" and b.image.key not in ctx.image_href:
+            n_img += 1
+            ext = b.image.ext
+            href = f"images/img{n_img:04d}.{ext}"
+            ctx.image_href[b.image.key] = href
+            book.images[href] = (b.image.data, "image/jpeg" if ext == "jpg" else "image/png")
+    rep.images = len(book.images)
+    rep.equations = sum(1 for b in blocks if b.kind == "image" and b.image.kind == "equation")
+
+    hid = 0
+    nav_raw: list[tuple[int, str, str, str]] = []     # level, title, file, id
+    for ci, ch in enumerate(chapters):
+        ch["file"] = f"chap{ci + 1:03d}.xhtml"
+        for b in ch["blocks"]:
+            if b.kind == "heading":
+                hid += 1
+                b.anchor = f"h{hid}"
+                text = _heading_plain(b, ctx)
+                if text:
+                    nav_raw.append((b.level, text, ch["file"], b.anchor))
+                    ctx.heading_targets.setdefault(norm_title(text), (ch["file"], b.anchor))
+                    ctx.heading_targets.setdefault(_strip_numbering(text), (ch["file"], b.anchor))
+
+    # ---- 8. render ----------------------------------------------------------------
+    for ch in chapters:
+        ctx.current_file = ch["file"]
+        body = render_blocks(ch["blocks"], ctx, heading_id=lambda b: b.anchor)
+        ch["html"] = "\n".join(body)
+    for (pg, mk), d in fn_defs.items():
+        if not d.used:
+            rep.warnings.append(f"footnote {mk} on page {pg + 1}: reference not located in the body text (note dropped)")
+
+    base_title = title
+    for ch in chapters:
+        if not ch["title"]:
+            ch["title"] = base_title if ch is chapters[0] else f"{base_title} (continued)"
+        book.chapters.append(Chapter(ch["file"], ch["title"], ch["html"] or "<p></p>"))
+
+    # navigation: headings down to nav_depth, relative to the shallowest level used
+    if nav_raw:
+        top = min(l for l, *_ in nav_raw)
+        for lv, text, f, hidn in nav_raw:
+            if lv - top + 1 <= opts.nav_depth:
+                book.nav.append(NavEntry(lv - top + 1, text, f"{f}#{hidn}"))
+        if chapters and not chapters[0]["head"] and chapters[0]["blocks"] and (
+                not book.nav or not book.nav[0].href.startswith(chapters[0]["file"])):
+            book.nav.insert(0, NavEntry(1, chapters[0]["title"], chapters[0]["file"]))
+    rep.chapters = len(book.chapters)
+    rep.headings = counters.headings
+    rep.heading_source = counters.heading_source
+    rep.lists = counters.lists
+    rep.tables = counters.tables
+    rep.footnotes = sum(1 for d in fn_defs.values() if d.used)
+    rep.running_lines_removed = counters.running_removed
+    rep.merged_paragraphs = counters.merged_paragraphs
+    if not any(b.kind == "heading" for b in blocks):
+        rep.warnings.append("no headings detected; chapters were split by size")
+    write_epub(book, dst)
+    return rep

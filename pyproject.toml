@@ -1,0 +1,20 @@
+[project]
+name = "pdf2epub"
+version = "1.0.0"
+description = "Layout-aware PDF to EPUB 3 converter"
+requires-python = ">=3.10"
+dependencies = ["pymupdf>=1.24"]
+
+[project.optional-dependencies]
+ocr = ["rapidocr-onnxruntime"]
+dev = ["pytest", "reportlab", "lxml"]
+
+[project.scripts]
+pdf2epub = "pdf2epub.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["pdf2epub"]
