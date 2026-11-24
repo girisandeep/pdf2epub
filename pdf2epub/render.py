@@ -302,7 +302,56 @@ def _render_list(items: list[Block], ctx: RenderCtx) -> str:
     return "".join(parts)
 
 
+def _render_structured_table(b: Block, ctx: RenderCtx) -> str:
+    t = b.table
+    by_row: dict[int, list[dict]] = {}
+    for c in sorted(t.cells, key=lambda c: (c["r0"], c["c0"])):
+        by_row.setdefault(c["r0"], []).append(c)
+    head_rows = 0
+    while head_rows < t.nrows and by_row.get(head_rows) and all(c.get("head") for c in by_row[head_rows]):
+        head_rows += 1
+    numeric = lambda x: bool(re.fullmatch(r"[\d.,%$€£()\-+\s]+", x or "")) and any(ch.isdigit() for ch in x)
+    occupied = {(r, c) for cell in t.cells for r in range(cell["r0"], cell["r1"]) for c in range(cell["c0"], cell["c1"])
+                if (r, c) != (cell["r0"], cell["c0"])}
+    out = ["<table>"]
+    if b.caption:
+        out.append(f"<caption>{inline_html(b.caption, ctx)}</caption>")
+    for r in range(t.nrows):
+        if r == 0 and head_rows:
+            out.append("<thead>")
+        if r == head_rows:
+            out.append("<tbody>")
+        cells = []
+        starting = {c["c0"]: c for c in by_row.get(r, [])}
+        col = 0
+        while col < t.ncols:
+            if (r, col) in occupied:               # covered by a row/col span from a cell above or to the left
+                col += 1
+                continue
+            c = starting.get(col)
+            if c is None:                           # the model lists only non-empty cells: keep the grid aligned
+                cells.append("<td></td>")
+                col += 1
+                continue
+            head = r < head_rows or c.get("head") or c.get("rhead")
+            tag = "th" if head else "td"
+            attrs = ""
+            if c["r1"] - c["r0"] > 1: attrs += f' rowspan="{c["r1"] - c["r0"]}"'
+            if c["c1"] - c["c0"] > 1: attrs += f' colspan="{c["c1"] - c["c0"]}"'
+            if head: attrs += ' scope="col"' if (r < head_rows or c.get("head")) else ' scope="row"'
+            elif numeric(c["text"]): attrs += ' class="num"'
+            cells.append(f"<{tag}{attrs}>{escape(c['text'])}</{tag}>")
+            col += max(c["c1"] - c["c0"], 1)
+        out.append("<tr>" + "".join(cells) + "</tr>")
+        if r == head_rows - 1 and head_rows:
+            out.append("</thead>")
+    out.append("</tbody></table>" if t.nrows > head_rows else "</table>")
+    return "".join(out)
+
+
 def _render_table(b: Block, ctx: RenderCtx) -> str:
+    if b.table.cells:
+        return _render_structured_table(b, ctx)
     rows = b.table.rows
     ncol = max(len(r) for r in rows)
     rows = [r + [""] * (ncol - len(r)) for r in rows]

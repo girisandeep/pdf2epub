@@ -27,18 +27,24 @@ class Region:
     score: float
     id: int = 0
     latex: str = ""                             # recognised LaTeX for formula regions (formulas=True)
+    table: dict | None = None                   # TableFormer structure for table regions (tables=True)
 
 
 class LayoutDetector:
-    def __init__(self, min_score: float = 0.35, cache: bool = True, formulas: bool = False):
+    def __init__(self, min_score: float = 0.35, cache: bool = True, formulas: bool = False,
+                 tables: bool = False):
         try:
             from docling.datamodel.base_models import InputFormat
             from docling.datamodel.pipeline_options import PdfPipelineOptions
             from docling.document_converter import DocumentConverter, PdfFormatOption
         except ImportError as e:
             raise ImportError("ML layout analysis needs Docling: pip install docling") from e
-        self.min_score, self.cache, self.formulas = min_score, cache, formulas
-        opts = PdfPipelineOptions(do_ocr=False, do_table_structure=False, do_formula_enrichment=formulas)
+        self.min_score, self.cache, self.formulas, self.tables = min_score, cache, formulas, tables
+        opts = PdfPipelineOptions(do_ocr=False, do_table_structure=tables, do_formula_enrichment=formulas)
+        if tables:
+            from docling.datamodel.pipeline_options import TableFormerMode
+            opts.table_structure_options.mode = TableFormerMode.ACCURATE
+            opts.table_structure_options.do_cell_matching = True
         dev = os.environ.get("PDF2EPUB_DEVICE", "auto").lower()          # auto | cpu | mps | cuda
         if dev != "auto":
             from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
@@ -50,7 +56,7 @@ class LayoutDetector:
         with open(path, "rb") as fh:
             for chunk in iter(lambda: fh.read(1 << 20), b""):
                 h.update(chunk)
-        h.update(f"{MODEL_TAG}:{first}:{last}:{self.min_score}:f{int(self.formulas)}".encode())
+        h.update(f"{MODEL_TAG}:{first}:{last}:{self.min_score}:f{int(self.formulas)}t{int(self.tables)}".encode())
         return os.path.join(CACHE_DIR, h.hexdigest() + ".json")
 
     @staticmethod
@@ -73,6 +79,35 @@ class LayoutDetector:
                         best, best_ov = r, ov
                 if best is not None and not best.latex:
                     best.latex = item.text
+
+    @staticmethod
+    def _attach_tables(res, out: dict[int, list[Region]]) -> None:
+        """Give each table region the cell grid (with spans and header flags) of the matching document table."""
+        for t in res.document.tables:
+            data = getattr(t, "data", None)
+            if data is None or not getattr(data, "table_cells", None):
+                continue
+            for prov in t.prov:
+                h = res.document.pages[prov.page_no].size.height
+                b = prov.bbox.to_top_left_origin(h)
+                best, best_ov = None, 0.0
+                for r in out.get(prov.page_no - 1, []):
+                    if r.label != "table":
+                        continue
+                    ov = max(min(b.r, r.bbox[2]) - max(b.l, r.bbox[0]), 0) * max(min(b.b, r.bbox[3]) - max(b.t, r.bbox[1]), 0)
+                    if ov > best_ov:
+                        best, best_ov = r, ov
+                if best is None or best.table:
+                    continue
+                cells = []
+                for c in data.table_cells:
+                    cb = c.bbox.to_top_left_origin(h) if getattr(c, "bbox", None) is not None else None
+                    cells.append({"r0": c.start_row_offset_idx, "r1": c.end_row_offset_idx,
+                                  "c0": c.start_col_offset_idx, "c1": c.end_col_offset_idx,
+                                  "text": c.text or "", "head": bool(c.column_header),
+                                  "rhead": bool(c.row_header),
+                                  "bbox": [cb.l, cb.t, cb.r, cb.b] if cb is not None else None})
+                best.table = {"nrows": data.num_rows, "ncols": data.num_cols, "cells": cells}
 
     def detect(self, path: str, first: int, last: int) -> dict[int, list[Region]]:
         """Regions per 0-based page index for pages first..last (inclusive)."""
@@ -97,6 +132,8 @@ class LayoutDetector:
             out[pg.page_no - 1] = regs
         if self.formulas:
             self._attach_latex(res, out)
+        if self.tables:
+            self._attach_tables(res, out)
         if self.cache:
             os.makedirs(CACHE_DIR, exist_ok=True)
             json.dump({p: [r.__dict__ for r in rs] for p, rs in out.items()}, open(cp, "w"))

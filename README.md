@@ -73,6 +73,15 @@ Measured on the 10-document corpus (`tests/run_corpus.py`, heuristics → `--ml`
 (−0.5 pt on `thinkpython`/−0.1 pt on `wiki_de`, which is page headers/footers now correctly removed).
 Speed: roughly 1 s/page on Apple-silicon CPU/MPS for the model.
 
+### Table structure (`--ml`, on by default; `--no-ml-tables` to skip)
+
+Docling's TableFormer (accurate mode) recovers each table's grid, including merged cells (`rowspan`/`colspan`) and
+header rows, which rule-less ("booktabs") tables never gave the heuristics. Structure comes from the model; **cell
+text comes from the PDF's own words**. The model's table is used only if its cells account for ≥95% of the words
+inside the region, otherwise the earlier PyMuPDF/word-geometry table is kept. Empty cells (which the model omits)
+are re-inserted so columns stay aligned. Example: the Transformer paper's two-level-header results table now has
+`BLEU` spanning EN-DE/EN-FR and each value under its own column, where before `24.6 39.92` were merged in one cell.
+
 ### Equations as MathML (`--ml --mathml`)
 
 ```bash

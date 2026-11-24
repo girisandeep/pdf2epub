@@ -210,3 +210,30 @@ def test_ml_formula_latex_becomes_mathml(pdfs, monkeypatch):
     assert len(chapters[0].xpath("//m:math", namespaces=M)) == 1
     assert chapters[0].xpath("//x:span[@class='eqno']", namespaces=NS)[0].text == "(1)"
     assert 'properties="mathml"' in z.read("OEBPS/content.opf").decode()
+
+
+def test_structured_table_rendering_spans_headers_and_gaps():
+    from pdf2epub.analyze import DocStats
+    from pdf2epub.model import Block, TableItem
+    from pdf2epub.render import RenderCtx, render_blocks
+
+    cells = [  # the model lists only non-empty cells; (r0,r1,c0,c1) with exclusive ends
+        {"r0": 0, "r1": 2, "c0": 0, "c1": 1, "text": "Model", "head": True},
+        {"r0": 0, "r1": 1, "c0": 1, "c1": 3, "text": "BLEU", "head": True},
+        {"r0": 1, "r1": 2, "c0": 1, "c1": 2, "text": "EN-DE", "head": True},
+        {"r0": 1, "r1": 2, "c0": 2, "c1": 3, "text": "EN-FR", "head": True},
+        {"r0": 2, "r1": 3, "c0": 0, "c1": 1, "text": "ByteNet"},
+        {"r0": 2, "r1": 3, "c0": 1, "c1": 2, "text": "23.75"},            # EN-FR cell is empty / unlisted
+        {"r0": 3, "r1": 4, "c0": 0, "c1": 1, "text": "GNMT"},
+        {"r0": 3, "r1": 4, "c0": 2, "c1": 3, "text": "39.92"},            # EN-DE cell is empty / unlisted
+    ]
+    t = TableItem(bbox=(0, 0, 1, 1), page=0, cells=cells, nrows=4, ncols=3)
+    html = render_blocks([Block("table", 0, table=t)], RenderCtx(DocStats()), heading_id=lambda b: "")[0]
+    doc = etree.fromstring(f'<div xmlns="http://www.w3.org/1999/xhtml">{html}</div>')
+    assert doc.xpath("//x:th[@colspan='2' and .='BLEU']", namespaces=NS) and doc.xpath("//x:th[@rowspan='2' and .='Model']", namespaces=NS)
+    assert len(doc.xpath("//x:thead/x:tr", namespaces=NS)) == 2 and len(doc.xpath("//x:tbody/x:tr", namespaces=NS)) == 2
+    # every body row spans the full 3 columns, with empty cells filling the gaps
+    for tr in doc.xpath("//x:tbody/x:tr", namespaces=NS):
+        assert len(tr.xpath("x:td|x:th", namespaces=NS)) == 3
+    row = [("".join(c.itertext())) for c in doc.xpath("//x:tbody/x:tr", namespaces=NS)[1].xpath("x:td", namespaces=NS)]
+    assert row == ["GNMT", "", "39.92"]

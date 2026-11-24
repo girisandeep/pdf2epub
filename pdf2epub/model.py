@@ -91,6 +91,10 @@ class ImageItem(Item):
 class TableItem(Item):
     rows: list[list[str]] = field(default_factory=list)
     header: bool = True
+    # structure-model tables: [{r0, r1, c0, c1, text, head}] with exclusive end indices (row/col spans)
+    cells: list[dict] = field(default_factory=list)
+    nrows: int = 0
+    ncols: int = 0
 
 
 @dataclass

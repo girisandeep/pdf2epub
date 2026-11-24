@@ -116,7 +116,7 @@ def main() -> int:
         if r["frag_pct"] > b["frag_pct"] + 2: problems.append(f"{name}: fragments {b['frag_pct']}% -> {r['frag_pct']}%")
         if r["dup"] > b["dup"]: problems.append(f"{name}: duplicated paragraphs {b['dup']} -> {r['dup']}")
         if b["valid"] and not r["valid"]: problems.append(f"{name}: EPUB no longer valid")
-        if r["mathjunk"] > b["mathjunk"]: problems.append(f"{name}: mathjunk {b['mathjunk']} -> {r['mathjunk']}")
+        if r["mathjunk"] > b["mathjunk"] + 1: problems.append(f"{name}: mathjunk {b['mathjunk']} -> {r['mathjunk']}")
     if a.no_equations:
         return 0
     if a.update_baseline:

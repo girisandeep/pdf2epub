@@ -563,9 +563,60 @@ def _drop_furniture(lines: list[Line], regions) -> list[Line]:
     return [l for l in lines if not any(_center_in(l.bbox, f) for f in furn)]
 
 
+def _structured_table(page: pymupdf.Page, r, words) -> Optional[TableItem]:
+    """Table from the structure model's grid: structure from the model, text from the PDF's own words."""
+    spec = r.table
+    if not spec or not spec.get("cells") or spec["nrows"] < 2 or spec["ncols"] < 2:
+        return None
+    # each PDF word goes to exactly one cell (the smallest cell box containing its centre), so overlapping
+    # boxes of merged cells can never duplicate text
+    specs = spec["cells"]
+    owner: dict[int, list] = {i: [] for i in range(len(specs))}
+    for w in words:
+        wb = (w[0], w[1], w[2], w[3])
+        best, best_area = None, None
+        for i, c in enumerate(specs):
+            if c.get("bbox") and _center_in(wb, c["bbox"], 1.5):
+                a = _area(c["bbox"])
+                if best is None or a < best_area:
+                    best, best_area = i, a
+        if best is not None:
+            owner[best].append(w)
+    cells = []
+    for i, c in enumerate(specs):
+        ws = sorted(owner[i], key=lambda w: (w[5], w[6], w[7]))
+        text = clean(" ".join(w[4] for w in ws)).strip() or clean(c.get("text", "")).strip()
+        cells.append({"r0": c["r0"], "r1": max(c["r1"], c["r0"] + 1), "c0": c["c0"], "c1": max(c["c1"], c["c0"] + 1),
+                      "text": text, "head": bool(c.get("head")), "rhead": bool(c.get("rhead"))})
+    # coverage: the model's cells must account for (almost) every word the PDF has inside the region
+    inside = [w for w in words if _center_in(((w[0]), w[1], w[2], w[3]), r.bbox)]
+    boxes = [c["bbox"] for c in spec["cells"] if c.get("bbox")]
+    covered = sum(1 for w in inside if any(_center_in((w[0], w[1], w[2], w[3]), b, 1.5) for b in boxes))
+    if inside and covered < 0.95 * len(inside):
+        return None
+    filled = sum(1 for c in cells if c["text"])
+    if filled < 0.3 * len(cells):
+        return None
+    grid = [[""] * spec["ncols"] for _ in range(spec["nrows"])]
+    for c in cells:
+        if c["r0"] < spec["nrows"] and c["c0"] < spec["ncols"]:
+            grid[c["r0"]][c["c0"]] = c["text"]
+    return TableItem(bbox=tuple(r.bbox), page=page.number, rows=grid, cells=cells,
+                     nrows=spec["nrows"], ncols=spec["ncols"])
+
+
 def _ml_tables(page: pymupdf.Page, regions, tables: list[TableItem], area: float) -> list[TableItem]:
     """Keep PyMuPDF tables the model agrees with; rebuild tables the model sees but PyMuPDF missed."""
     treg = [r for r in regions if r.label == "table" and r.score >= 0.5]
+    words = None
+    structured: list[TableItem] = []
+    for r in treg:
+        if r.table:
+            words = words or page.get_text("words")
+            t = _structured_table(page, r, words)
+            if t is not None:
+                structured.append(t)
+    tables = [t for t in tables if not any(_overlap(t.bbox, s.bbox) > 0.3 * _area(t.bbox) for s in structured)]
     textual = [r.bbox for r in regions if r.label in ("text", "section_header", "list_item", "title") and r.score >= 0.8]
     kept = []
     for t in tables:
@@ -574,12 +625,11 @@ def _ml_tables(page: pymupdf.Page, regions, tables: list[TableItem], area: float
         prose = sum(_overlap(t.bbox, b) for b in textual) > 0.7 * _area(t.bbox)
         if agree or not prose:
             kept.append(t)
-    words = None
+    kept += structured
     for r in treg:
         if any(_overlap(t.bbox, r.bbox) > 0.3 * _area(r.bbox) for t in kept):
             continue
-        if words is None:
-            words = page.get_text("words")
+        words = words or page.get_text("words")
         grid = _grid_from_words(words, r.bbox)
         if grid and len(grid) >= 2 and max(len(row) for row in grid) >= 2:
             kept.append(TableItem(bbox=r.bbox, page=page.number, rows=grid))
