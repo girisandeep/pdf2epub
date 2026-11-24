@@ -29,6 +29,7 @@ python3 -m venv .venv && .venv/bin/pip install -e '.[ocr,dev]'
 | Footnotes | Footnote areas located by size/position and linked to body markers as EPUB 3 `noteref`/`footnote` asides |
 | Printed TOC pages | Dot-leader contents pages become link lists pointing at the real headings |
 | Equations | Display equations (math fonts / relations + scripts, fraction pieces and equation numbers grouped) are rendered as images sized in `em`, with the text kept as `alt`; inline math stays as styled text. `--no-equations` disables |
+| Cross-references | Mentions of "Figure 1", "Table 2", "Section 3.1", "Eq. (4)" etc. in prose become clickable links to the actual figure, table, heading or equation — across chapters |
 | Code | Monospace runs → `<pre><code>` with indentation preserved; monospace URLs/emails stay inline |
 | Scans | Pages with no text layer are OCR'd: Tesseract if installed, otherwise RapidOCR (pure pip). Without either, the page image is embedded and a warning is printed |
 | Packaging | EPUB 3 + NCX, nested nav built from headings, cover from page 1, metadata/title/language detection, sensible chapter sizes |
@@ -66,9 +67,11 @@ How the labels are used, and how they are kept from doing harm:
   (union of model and heuristics). Captions and boxed prose inside a picture region are never swallowed.
 * **Tables**: the model confirms PyMuPDF's tables and rebuilds ones PyMuPDF missed; a ruled "table" is dropped
   only if the model is confident the area is prose.
+* **Algorithms**: regions the model labels as `code` but that use a proportional font are rendered as styled
+  algorithm/pseudocode blocks instead of individual paragraphs, cutting fragment and mathjunk counts.
 
-Measured on the 10-document corpus (`tests/run_corpus.py`, heuristics → `--ml`): stray fragments `vae` 29%→14%,
-`resnet` 14%→8%, `adam` 28%→20%, `bert` 10%→8%, `thinkpython` 16%→14%; math junk `vae` 19→8, `adam` 33→23;
+Measured on the 10-document corpus (`tests/run_corpus.py`, heuristics → `--ml`): stray fragments `vae` 29%→12%,
+`resnet` 14%→3%, `adam` 28%→16%, `bert` 10%→5%, `thinkpython` 16%→13%; math junk `vae` 19→8, `adam` 33→19;
 `irs_pub` headings 100→85 by removing ~14 list items wrongly promoted to headings; recall equal or better
 (−0.5 pt on `thinkpython`/−0.1 pt on `wiki_de`, which is page headers/footers now correctly removed).
 Speed: roughly 1 s/page on Apple-silicon CPU/MPS for the model.

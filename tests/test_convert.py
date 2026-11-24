@@ -21,6 +21,7 @@ def pdfs(tmp_path_factory):
     make_pdfs.hyphenated(str(d / "hyphen.pdf"))
     make_pdfs.footnotes(str(d / "footnotes.pdf"))
     make_pdfs.equations(str(d / "equations.pdf"))
+    make_pdfs.crossrefs(str(d / "crossrefs.pdf"))
     return d
 
 
@@ -237,3 +238,27 @@ def test_structured_table_rendering_spans_headers_and_gaps():
         assert len(tr.xpath("x:td|x:th", namespaces=NS)) == 3
     row = [("".join(c.itertext())) for c in doc.xpath("//x:tbody/x:tr", namespaces=NS)[1].xpath("x:td", namespaces=NS)]
     assert row == ["GNMT", "", "39.92"]
+
+
+def test_crossrefs(pdfs):
+    """Cross-reference mentions in prose become internal links to their targets."""
+    _, _, z = run(pdfs, "crossrefs")
+    links: dict[str, str] = {}  # link text -> href
+    targets: set[str] = set()
+    for n in sorted(z.namelist()):
+        if not n.startswith("OEBPS/chap"):
+            continue
+        doc = etree.fromstring(z.read(n))
+        for a in doc.xpath("//x:a", namespaces=NS):
+            href = a.get("href", "")
+            text = "".join(a.itertext()).strip()
+            if href and ("#xref" in href or "#h" in href):
+                links[text] = href
+        for el in doc.xpath("//*[@id]"):
+            targets.add(el.get("id", ""))
+
+    # Table 1 from caption should be linked in prose
+    assert "Table 1" in links, f"Table 1 not linked; links: {links}"
+    # the table anchor must actually exist
+    anchor = links["Table 1"].split("#")[-1]
+    assert anchor in targets, f"Table 1 anchor {anchor} not found; targets: {targets}"

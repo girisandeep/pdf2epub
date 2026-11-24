@@ -140,3 +140,47 @@ def equations(path: str) -> None:
                "z is the length of the hypotenuse, which is always the longest side."]:
         c.drawString(72, y, ln); y -= 15
     c.save()
+
+
+def crossrefs(path: str) -> None:
+    """Two-page PDF with sections, a figure caption, a table, and cross-references in prose."""
+    from reportlab.lib.units import inch
+    ss = getSampleStyleSheet()
+    body = ParagraphStyle("body", parent=ss["Normal"], fontName="Times-Roman", fontSize=11, leading=14, spaceAfter=8)
+    h1 = ParagraphStyle("h1", parent=ss["Heading1"], fontName="Helvetica-Bold", fontSize=18, spaceAfter=10)
+    h2 = ParagraphStyle("h2", parent=ss["Heading2"], fontName="Helvetica-Bold", fontSize=14, spaceAfter=8)
+    cap = ParagraphStyle("cap", parent=ss["Normal"], fontName="Times-Italic", fontSize=10, leading=12, spaceAfter=6)
+
+    doc = BaseDocTemplate(path, pagesize=letter)
+    f = Frame(72, 72, letter[0] - 144, letter[1] - 144, id="main")
+    doc.addPageTemplates([PageTemplate("main", frames=[f])])
+
+    story = [
+        Paragraph("1 Introduction", h1),
+        Paragraph("This paper introduces a new model. The main result is in Section 2 and "
+                   "the architecture is shown in Figure 1. Performance numbers are in Table 1.", body),
+        PageBreak(),
+        Paragraph("2 Method", h1),
+        Paragraph("2.1 Architecture", h2),
+        Paragraph("The architecture is illustrated below.", body),
+    ]
+    # Simple figure placeholder
+    t_fig = Table([["[Diagram]"]], colWidths=[3 * inch], rowHeights=[1 * inch])
+    t_fig.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 1, colors.black),
+                                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                                ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+    story.append(t_fig)
+    story.append(Paragraph("Figure 1: Overview of the proposed architecture.", cap))
+    story.append(Paragraph("As shown in Figure 1, the model uses an encoder-decoder structure. "
+                           "See Section 1 for motivation and Table 1 for results.", body))
+
+    story.append(Paragraph("2.2 Results", h2))
+    data = [["Model", "Accuracy"], ["Ours", "95.2"], ["Baseline", "91.0"]]
+    t = Table(data, colWidths=[2 * inch, 1.5 * inch])
+    t.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                           ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey)]))
+    story.append(Paragraph("Table 1: Comparison of model accuracy.", cap))
+    story.append(t)
+    story.append(Paragraph("Table 1 shows that our model outperforms the baseline.", body))
+
+    doc.build(story)

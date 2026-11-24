@@ -14,6 +14,7 @@ from .epub import Chapter, EpubBook, NavEntry, write_epub
 from .extract import OcrEngine, extract_page
 from .layout import reading_order
 from .model import Block, FootnoteDef
+from .mathml import equation_number
 from .render import RenderCtx, inline_html, render_blocks
 from .text import guess_language, norm_title
 
@@ -109,6 +110,89 @@ def _heading_plain(b: Block, ctx: RenderCtx) -> str:
 
 def _strip_numbering(t: str) -> str:
     return re.sub(r"^(chapter|part|section)?\s*([\dIVXLC]+[.)]?\s+|[\d.]+\s+)", "", norm_title(t)).strip()
+
+
+# ---- cross-reference targets -------------------------------------------------
+
+_CAPTION_NUM = re.compile(
+    r"^\s*(Fig(?:ure)?s?\.?|Table|Tab\.|Algorithm|Listing|Scheme|Exhibit)"
+    r"\s*(\d+(?:\.\d+)*[a-z]?)\s*[.:)\s-]", re.I)
+
+_SECTION_NUM = re.compile(r"^(\d+(?:\.\d+)*[a-z]?)(?:\s|[.)])")
+
+_SECTION_WORD = re.compile(
+    r"^(?:Section|Appendix|Chapter)\s+(\d+(?:\.\d+)*[a-z]?)\s", re.I)
+
+
+def _canon(kind: str) -> str:
+    k = kind.rstrip(".").lower()
+    if k.startswith("fig"):
+        return "figure"
+    if k in ("tab",):
+        return "table"
+    return k
+
+
+def _build_xref_targets(blocks: list[Block], chapters: list[dict], ctx: RenderCtx) -> None:
+    """Scan blocks for figures, tables, equations, algorithms and register xref targets."""
+    # Map each block id to its chapter file
+    block_file: dict[int, str] = {}
+    for ch in chapters:
+        for b in ch["blocks"]:
+            block_file[id(b)] = ch["file"]
+
+    xid = 0  # counter for unique xref anchors
+    for b in blocks:
+        file = block_file.get(id(b), "")
+        if not file:
+            continue
+
+        # --- figures and tables (from captions) ---
+        if b.kind in ("image", "table") and b.caption:
+            caption_text = " ".join(s.text for l in b.caption for s in l.spans)
+            m = _CAPTION_NUM.match(caption_text)
+            if m:
+                kind = _canon(m.group(1))
+                num = m.group(2)
+                xid += 1
+                b.anchor = b.anchor or f"xref{xid}"
+                ctx.xref_targets.setdefault(f"{kind} {num}", (file, b.anchor))
+
+        # --- equations (from equation number in alt text) ---
+        if b.kind == "image" and b.image and b.image.kind == "equation":
+            eqno = equation_number(b.image.alt or "")
+            if eqno:
+                num = eqno.strip("()")
+                xid += 1
+                b.anchor = b.anchor or f"xref{xid}"
+                ctx.xref_targets.setdefault(f"equation {num}", (file, b.anchor))
+                ctx.xref_targets.setdefault(f"eq {num}", (file, b.anchor))
+
+        # --- algorithms (from first line or caption) ---
+        if b.kind == "algorithm" and b.lines:
+            # Look for "Algorithm N" in the first line or in an adjacent heading
+            first_text = b.lines[0].text.strip()
+            m = re.match(r"Algorithm\s+(\d+)", first_text, re.I)
+            if m:
+                xid += 1
+                b.anchor = b.anchor or f"xref{xid}"
+                ctx.xref_targets.setdefault(f"algorithm {m.group(1)}", (file, b.anchor))
+
+        # --- headings with section numbers ---
+        if b.kind == "heading" and b.anchor:
+            text = b.synthetic_text if b.synthetic_text else " ".join(
+                s.text for l in b.lines for s in l.spans)
+            text = text.strip()
+            m = _SECTION_NUM.match(text)
+            if m:
+                num = m.group(1)
+                ctx.xref_targets.setdefault(f"section {num}", (file, b.anchor))
+                ctx.xref_targets.setdefault(f"subsection {num}", (file, b.anchor))
+            m = _SECTION_WORD.match(text)
+            if m:
+                num = m.group(1)
+                ctx.xref_targets.setdefault(f"section {num}", (file, b.anchor))
+                ctx.xref_targets.setdefault(f"appendix {num}", (file, b.anchor))
 
 
 def _split_chapters(blocks: list[Block], opts: ConversionOptions, ctx: RenderCtx):
@@ -301,6 +385,8 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
                     nav_raw.append((b.level, text, ch["file"], b.anchor))
                     ctx.heading_targets.setdefault(norm_title(text), (ch["file"], b.anchor))
                     ctx.heading_targets.setdefault(_strip_numbering(text), (ch["file"], b.anchor))
+
+    _build_xref_targets(blocks, chapters, ctx)
 
     # ---- 8. render ----------------------------------------------------------------
     for ch in chapters:

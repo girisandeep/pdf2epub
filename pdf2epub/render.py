@@ -13,6 +13,18 @@ from .text import _COMPOUND_PREFIX, english_words, known_word, norm_title
 URL_RE = re.compile(r"(?<![\w@/])((?:https?://|www\.)[^\s<>\"']+[^\s<>\"'.,;:!?)\]}])")
 MAIL_RE = re.compile(r"(?<![\w.@])([\w.+-]+@[\w-]+(?:\.[\w-]+)+)")
 
+# Cross-reference patterns: "Figure 1", "Fig. 2", "Table 3", "Eq. (4)", "Section 5.1", etc.
+_XREF_RE = re.compile(
+    r"(?<![.\w])"                               # not mid-word / decimal continuation
+    r"(Fig(?:ure)?s?\.?|Table|Tab\.|"
+    r"Eq(?:uation)?s?\.?|"
+    r"(?:Sub)?[Ss]ection|Sect?\.|§|"
+    r"Appendix|Algorithm|Theorem|Lemma|"
+    r"Corollary|Proposition|Definition)"
+    r"\s*"
+    r"(?:\((\d+(?:\.\d+)*[a-z]?)\)|(\d+(?:\.\d+)*[a-z]?))"   # (4) or 1.2
+    , re.I)
+
 
 @dataclass
 class RenderCtx:
@@ -20,6 +32,7 @@ class RenderCtx:
     footnotes: dict[tuple[int, str], FootnoteDef] = field(default_factory=dict)
     image_href: dict[str, str] = field(default_factory=dict)       # image key -> href
     heading_targets: dict[str, tuple[str, str]] = field(default_factory=dict)  # norm title -> (file,id)
+    xref_targets: dict[str, tuple[str, str]] = field(default_factory=dict)     # "figure 1" -> (file,id)
     fn_counter: int = 0
     current_file: str = ""
 
@@ -111,6 +124,75 @@ def _linkify(escaped: str) -> str:
     return MAIL_RE.sub(lambda m: f'<a href="mailto:{m.group(1)}">{m.group(1)}</a>', escaped)
 
 
+def _xref_key(kind: str, number: str) -> str:
+    """Normalise a cross-reference mention to a lookup key."""
+    k = kind.rstrip(".").lower()
+    # Collapse synonyms to canonical forms
+    if k.startswith("fig"):
+        k = "figure"
+    elif k in ("tab", "tab."):
+        k = "table"
+    elif k.startswith("eq"):
+        k = "equation"
+    elif k in ("sect", "sec", "§", "subsection"):
+        k = "section"
+    return f"{k} {number}"
+
+
+def _insert_xrefs(html: str, ctx: RenderCtx) -> str:
+    """Replace cross-reference mentions in rendered HTML with internal links."""
+    # Don't match inside HTML tags or existing <a> elements
+    parts: list[str] = []
+    pos = 0
+    in_tag = False
+    in_a = 0  # nesting depth of <a> elements
+
+    # Split into tag / text segments to avoid matching inside tags
+    TAG_RE = re.compile(r"<(/?)([a-zA-Z][a-zA-Z0-9]*)[^>]*>")
+    segments: list[tuple[str, bool]] = []  # (text, is_linkable)
+    last = 0
+    for m in TAG_RE.finditer(html):
+        if m.start() > last:
+            segments.append((html[last:m.start()], in_a == 0))
+        tag_name = m.group(2).lower()
+        if m.group(1):  # closing tag
+            if tag_name == "a":
+                in_a = max(0, in_a - 1)
+        else:  # opening tag
+            if tag_name == "a":
+                in_a += 1
+        segments.append((m.group(), False))  # tag itself is never linkable
+        last = m.end()
+    if last < len(html):
+        segments.append((html[last:], in_a == 0))
+
+    out: list[str] = []
+    for text, linkable in segments:
+        if not linkable:
+            out.append(text)
+            continue
+        # Apply cross-reference linking to this text segment
+        result = []
+        last_end = 0
+        for m in _XREF_RE.finditer(text):
+            number = m.group(2) or m.group(3)  # group 2 = parenthesized, group 3 = bare
+            key = _xref_key(m.group(1), number)
+            tgt = ctx.xref_targets.get(key)
+            if not tgt:
+                continue
+            file, anchor = tgt
+            href = f"#{anchor}" if file == ctx.current_file else f"{file}#{anchor}"
+            result.append(text[last_end:m.start()])
+            result.append(f'<a href="{href}">{m.group()}</a>')
+            last_end = m.end()
+        if result:
+            result.append(text[last_end:])
+            out.append("".join(result))
+        else:
+            out.append(text)
+    return "".join(out)
+
+
 def inline_html(lines: list[Line], ctx: RenderCtx, *, strip_bold=False, footnote_sink: list | None = None) -> str:
     segs = line_segments(lines, ctx, strip_bold)
     # merge neighbours with identical style
@@ -159,7 +241,10 @@ def inline_html(lines: list[Line], ctx: RenderCtx, *, strip_bold=False, footnote
                 html = _linkify(html)
         out.append(escape(lead) + html + escape(trail))
     s = "".join(out)
-    return re.sub(r"[ \t]+", " ", s).strip()
+    s = re.sub(r"[ \t]+", " ", s).strip()
+    if ctx.xref_targets:
+        s = _insert_xrefs(s, ctx)
+    return s
 
 
 def _page_of(lines: list[Line], core: str) -> int:
@@ -272,19 +357,21 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id) -> list[st
         elif k == "code":
             html.append(render_code(b))
         elif k == "algorithm":
-            html.append(render_algorithm(b))
+            aid = f' id="{b.anchor}"' if b.anchor else ""
+            html.append(render_algorithm(b).replace('<div class="algorithm">', f'<div class="algorithm"{aid}>', 1))
         elif k == "image":
             im = b.image
             href = ctx.image_href.get(im.key)
+            aid = f' id="{b.anchor}"' if b.anchor else ""
             if href and im.kind == "equation":
                 w = (im.width + 4) / max(ctx.stats.body_size, 6.0)
                 mathml = to_mathml(im.latex, im.alt, altimg=href) if im.latex else None
                 if mathml:
                     no = equation_number(im.alt)
                     tag = f'<span class="eqno">{escape(no)}</span>' if no else ""
-                    html.append(f'<div class="equation mathml">{mathml}{tag}</div>')
+                    html.append(f'<div class="equation mathml"{aid}>{mathml}{tag}</div>')
                 else:
-                    html.append(f'<div class="equation"><img class="equation" src="{href}" alt={quoteattr(im.alt[:300])} '
+                    html.append(f'<div class="equation"{aid}><img class="equation" src="{href}" alt={quoteattr(im.alt[:300])} '
                                 f'style="width:{w:.2f}em"/></div>')
             elif href:
                 cap = inline_html(b.caption, ctx) if b.caption else ""
@@ -292,9 +379,12 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id) -> list[st
                 fig = f'<img src="{href}" alt="{alt}"/>'
                 if cap:
                     fig += f"<figcaption>{cap}</figcaption>"
-                html.append(f"<figure>{fig}</figure>")
+                html.append(f"<figure{aid}>{fig}</figure>")
         elif k == "table":
-            html.append(_render_table(b, ctx))
+            tbl = _render_table(b, ctx)
+            if b.anchor:
+                tbl = tbl.replace("<table>", f'<table id="{b.anchor}">', 1)
+            html.append(tbl)
         elif k == "toc":
             html.append(_render_toc(b, ctx))
         i += 1
