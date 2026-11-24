@@ -16,11 +16,11 @@ MAIL_RE = re.compile(r"(?<![\w.@])([\w.+-]+@[\w-]+(?:\.[\w-]+)+)")
 # Cross-reference patterns: "Figure 1", "Fig. 2", "Table 3", "Eq. (4)", "Section 5.1", etc.
 _XREF_RE = re.compile(
     r"(?<![.\w])"                               # not mid-word / decimal continuation
-    r"(Fig(?:ure)?s?\.?|Table|Tab\.|"
+    r"(Fig(?:ure)?s?\.?|Tables?|Tab\.|"
     r"Eq(?:uation)?s?\.?|"
-    r"(?:Sub)?[Ss]ection|Sect?\.|§|"
-    r"Appendix|Algorithm|Theorem|Lemma|"
-    r"Corollary|Proposition|Definition)"
+    r"(?:Sub)?[Ss]ections?|Sect?\.|§|"
+    r"Appendi(?:x|ces)|Algorithms?|Theorems?|Lemmas?|"
+    r"Corollar(?:y|ies)|Propositions?|Definitions?)"
     r"\s*"
     r"(?:\((\d+(?:\.\d+)*[a-z]?)\)|(\d+(?:\.\d+)*[a-z]?))"   # (4) or 1.2
     , re.I)
