@@ -130,12 +130,26 @@ def _xref_key(kind: str, number: str) -> str:
     # Collapse synonyms to canonical forms
     if k.startswith("fig"):
         k = "figure"
-    elif k in ("tab", "tab."):
+    elif k.startswith("tab"):
         k = "table"
     elif k.startswith("eq"):
         k = "equation"
-    elif k in ("sect", "sec", "§", "subsection"):
+    elif k in ("§",) or k.startswith("sec") or k.startswith("subsec"):
         k = "section"
+    elif k.startswith("appendi"):
+        k = "appendix"
+    elif k.startswith("algorithm"):
+        k = "algorithm"
+    elif k.startswith("theorem"):
+        k = "theorem"
+    elif k.startswith("lemma"):
+        k = "lemma"
+    elif k.startswith("corollar"):
+        k = "corollary"
+    elif k.startswith("proposition"):
+        k = "proposition"
+    elif k.startswith("definition"):
+        k = "definition"
     return f"{k} {number}"
 
 
@@ -341,10 +355,12 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id) -> list[st
             sink: list[FootnoteDef] = []
             body = inline_html(b.lines, ctx, footnote_sink=sink)
             if body:
-                cls = ""
+                attrs = ""
                 if all(l.italic for l in b.lines) and len(b.lines) >= 2:
-                    cls = ' class="quote"'
-                html.append(f"<p{cls}>{body}</p>")
+                    attrs = ' class="quote"'
+                if b.anchor:
+                    attrs += f' id="{b.anchor}"'
+                html.append(f"<p{attrs}>{body}</p>")
             for fn in sink:
                 html.append(_fn_aside(fn, ctx))
         elif k == "li":

@@ -118,6 +118,10 @@ _CAPTION_NUM = re.compile(
     r"^\s*(Fig(?:ure)?s?\.?|Table|Tab\.|Algorithm|Listing|Scheme|Exhibit)"
     r"\s*(\d+(?:\.\d+)*[a-z]?)\s*[.:)\s-]", re.I)
 
+_THEOREM_NUM = re.compile(
+    r"^\s*(Theorem|Lemma|Corollary|Proposition|Definition|Remark|Conjecture|Claim|Example|Fact)"
+    r"\s+(\d+(?:\.\d+)*[a-z]?)\s*[.:(]", re.I)
+
 _SECTION_NUM = re.compile(r"^(\d+(?:\.\d+)*[a-z]?)(?:\s|[.)])")
 
 _SECTION_WORD = re.compile(
@@ -177,6 +181,17 @@ def _build_xref_targets(blocks: list[Block], chapters: list[dict], ctx: RenderCt
                 xid += 1
                 b.anchor = b.anchor or f"xref{xid}"
                 ctx.xref_targets.setdefault(f"algorithm {m.group(1)}", (file, b.anchor))
+
+        # --- theorems, lemmas, definitions (from paragraph start) ---
+        if b.kind == "para" and b.lines:
+            first_text = " ".join(s.text for s in b.lines[0].spans).strip()
+            m = _THEOREM_NUM.match(first_text)
+            if m:
+                kind = m.group(1).lower()
+                num = m.group(2)
+                xid += 1
+                b.anchor = b.anchor or f"xref{xid}"
+                ctx.xref_targets.setdefault(f"{kind} {num}", (file, b.anchor))
 
         # --- headings with section numbers ---
         if b.kind == "heading" and b.anchor:
