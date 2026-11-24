@@ -8,7 +8,7 @@ Metrics (all computed from the produced EPUB, no ground truth needed):
   recall / precision  word overlap with the PDF text layer (order-insensitive)
   valid               structural EPUB check passes
   frag%               paragraphs shorter than 40 chars that don't end a sentence (stray fragments)
-  mathjunk            short paragraphs (<120 chars) carrying >=3 sub/sup tags (equations left as text soup)
+  mathjunk            short paragraphs (<120 chars) with dense sub/sup tags (<15 chars/tag; equations left as text soup)
   dup                 identical paragraphs (>=60 chars) repeated back-to-back (duplication bugs)
   eq                  equations rendered as images
 """
@@ -83,7 +83,7 @@ def evaluate(args: tuple) -> dict:
         "precision": round(common / max(sum(got.values()), 1), 4),
         "valid": check(out) == [],
         "frag_pct": round(100 * frag / max(len(texts), 1), 1),
-        "mathjunk": sum(1 for t, s in paras if s >= 3 and len(t) < 120),
+        "mathjunk": sum(1 for t, s in paras if s >= 3 and len(t) < 120 and len(t) / s < 15),
         "dup": dup, "eq": stats["eq"], "mathml": stats["mathml"], "paras": len(texts),
     }
 
