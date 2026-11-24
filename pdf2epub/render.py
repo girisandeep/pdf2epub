@@ -26,6 +26,7 @@ _XREF_RE = re.compile(
     , re.I)
 
 _CITE_RE = re.compile(r"\[(\d+(?:\s*[,;]\s*\d+)*)\]")
+_CITE_ALPHA_RE = re.compile(r"\[([A-Z][A-Za-z+\d]{1,20}(?:\s*[,;]\s*[A-Z][A-Za-z+\d]{1,20})*)\]")
 
 
 @dataclass
@@ -203,28 +204,30 @@ def _insert_xrefs(html: str, ctx: RenderCtx) -> str:
             result.append(f'<a href="{href}">{m.group()}</a>')
             last_end = m.end()
             linked.add((m.start(), m.end()))
-        for m in _CITE_RE.finditer(text):
-            if any(s <= m.start() < e for s, e in linked):
-                continue
-            if m.start() < last_end:
-                continue
-            nums = re.split(r"[,;]\s*", m.group(1).strip())
-            parts_c = []
-            any_linked = False
-            for num in nums:
-                num = num.strip()
-                tgt = ctx.xref_targets.get(f"cite {num}")
-                if tgt:
-                    file, anchor = tgt
-                    href = f"#{anchor}" if file == ctx.current_file else f"{file}#{anchor}"
-                    parts_c.append(f'<a href="{href}">{num}</a>')
-                    any_linked = True
-                else:
-                    parts_c.append(num)
-            if any_linked:
-                result.append(text[last_end:m.start()])
-                result.append("[" + ", ".join(parts_c) + "]")
-                last_end = m.end()
+        for cite_re in (_CITE_RE, _CITE_ALPHA_RE):
+            for m in cite_re.finditer(text):
+                if any(s <= m.start() < e for s, e in linked):
+                    continue
+                if m.start() < last_end:
+                    continue
+                keys = re.split(r"[,;]\s*", m.group(1).strip())
+                parts_c = []
+                any_linked = False
+                for key in keys:
+                    key = key.strip()
+                    tgt = ctx.xref_targets.get(f"cite {key}")
+                    if tgt:
+                        file, anchor = tgt
+                        href = f"#{anchor}" if file == ctx.current_file else f"{file}#{anchor}"
+                        parts_c.append(f'<a href="{href}">{key}</a>')
+                        any_linked = True
+                    else:
+                        parts_c.append(key)
+                if any_linked:
+                    result.append(text[last_end:m.start()])
+                    result.append("[" + ", ".join(parts_c) + "]")
+                    last_end = m.end()
+                    linked.add((m.start(), m.end()))
         if result:
             result.append(text[last_end:])
             out.append("".join(result))
