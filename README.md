@@ -73,6 +73,21 @@ Measured on the 10-document corpus (`tests/run_corpus.py`, heuristics → `--ml`
 (−0.5 pt on `thinkpython`/−0.1 pt on `wiki_de`, which is page headers/footers now correctly removed).
 Speed: roughly 1 s/page on Apple-silicon CPU/MPS for the model.
 
+### Equations as MathML (`--ml --mathml`)
+
+```bash
+pdf2epub paper.pdf --ml --mathml
+```
+Docling's formula model (`CodeFormulaV2`) reads each formula region back into LaTeX, which is converted to MathML
+(`<math altimg=… alttext=…>`, so readers without MathML support show the image). MathML equations reflow, scale and
+are readable by screen readers. A recognised formula is only used when it passes guards, otherwise the equation stays
+an image: the LaTeX must account for ≥60% of the symbols in the PDF's own text for that region, must contain no
+commands the converter cannot translate, and no prose (a sign the model clipped surrounding text). Multi-line equations
+become an `<mtable>`; equation numbers are kept. On the VAE paper's two equation pages 7 of 12 formulas passed, the rest fell back to images.
+
+**Cost:** the formula model runs on CPU/CUDA only (not Apple MPS), about 30 s per formula on a laptop CPU, so a math-heavy
+paper takes a long time the first run (results are cached per file). That is why it is opt-in. Set `PDF2EPUB_DEVICE=cuda` on a GPU machine.
+
 ## Regression corpus
 
 `python tests/fetch_corpus.py` downloads 10 varied open documents (2-column papers, math-heavy papers, a

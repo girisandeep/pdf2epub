@@ -131,6 +131,9 @@ def test_ml_layout_regions_drive_structure(pdfs, monkeypatch):
     regions[0][0] = ml.Region("text", (70, top - 2, 540, num.y0 - 20), 0.99, 1)
 
     class Stub:
+        def __init__(self, **kw):
+            pass
+
         def detect(self, path, first, last):
             return regions
 
@@ -152,6 +155,9 @@ def test_ml_section_header_label_makes_heading(pdfs, monkeypatch):
                    ml.Region("text", (60, 60, 540, last.y0 - 8), 0.95, 2)]}
 
     class Stub:
+        def __init__(self, **kw):
+            pass
+
         def detect(self, path, first, last_):
             return regions
 
@@ -159,3 +165,48 @@ def test_ml_section_header_label_makes_heading(pdfs, monkeypatch):
     rep, chapters, _ = run(pdfs, "hyphen", cover="off", ml="on")
     heads = ["".join(h.itertext()) for h in chapters[0].xpath("//x:h1|//x:h2|//x:h3", namespaces=NS)]
     assert rep.heading_source == "layout-model" and heads == ["A new paragraph starts here and is separate."]
+
+
+def test_latex_to_mathml_guards():
+    pytest.importorskip("latex2mathml")
+    from pdf2epub.mathml import equation_number, to_mathml
+
+    good = to_mathml(r"\mathcal { L } ( \theta ) = \frac { 1 } { L } \sum _ { i = 1 } ^ { N } x _ { i }",
+                     "L(θ) = 1 L Σ i=1 xi (4)", "images/e.png")
+    assert good and "<mfrac>" in good and 'altimg="images/e.png"' in good
+    etree.fromstring(good.encode())
+    aligned = to_mathml(r"a & = b + c \\ d & = e", "a = b + c d = e")
+    assert aligned and aligned.count("<mtr>") == 2          # latex2mathml alone emits an invalid '&' here
+    etree.fromstring(aligned.encode())
+    assert to_mathml(r"\varlaiceneq a + b", "a + b") is None                          # unknown command
+    assert to_mathml(r"\text { that the generic accumulator } = x", "that the generic accumulator = x") is None  # prose
+    assert to_mathml(r"x = y", "completely unrelated words") is None                  # does not match the PDF text
+    assert equation_number("L(x) = y (12)") == "(12)" and equation_number("no number") is None
+
+
+def test_ml_formula_latex_becomes_mathml(pdfs, monkeypatch):
+    pytest.importorskip("latex2mathml")
+    import pymupdf
+    from pdf2epub import ml
+
+    page = pymupdf.open(str(pdfs / "equations.pdf"))[0]
+    num = page.search_for("(1)")[0]
+    top = min(w[1] for w in page.get_text("words"))
+    regions = {0: [ml.Region("text", (70, top - 2, 540, num.y0 - 20), 0.99, 1),
+                   ml.Region("formula", (240, num.y0 - 4, 520, num.y1 + 4), 0.95, 2,
+                             latex="x ^ { 2 } + y ^ { 2 } = z ^ { 2 }"),
+                   ml.Region("text", (70, num.y1 + 20, 540, 780), 0.99, 3)]}
+
+    class Stub:
+        def __init__(self, **kw):
+            assert kw.get("formulas") is True            # --mathml must request formula recognition
+
+        def detect(self, path, first, last):
+            return regions
+
+    monkeypatch.setattr(ml, "LayoutDetector", Stub)
+    rep, chapters, z = run(pdfs, "equations", cover="off", ml="on", mathml=True)
+    M = {"m": "http://www.w3.org/1998/Math/MathML"}
+    assert len(chapters[0].xpath("//m:math", namespaces=M)) == 1
+    assert chapters[0].xpath("//x:span[@class='eqno']", namespaces=NS)[0].text == "(1)"
+    assert 'properties="mathml"' in z.read("OEBPS/content.opf").decode()

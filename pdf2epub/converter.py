@@ -33,6 +33,7 @@ class ConversionOptions:
     split_level: Optional[int] = None        # heading level that starts a new chapter file
     keep_running_heads: bool = False
     footnotes: bool = True
+    mathml: bool = False                     # with ml: recognise formulas as LaTeX -> MathML (slow on CPU; image fallback)
     ml: str = "off"                          # off | on : deep-learning layout analysis (needs docling)
     equations: bool = True                   # render display equations as images (alt text kept)
     use_outline: bool = True
@@ -184,7 +185,7 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
     regions = None
     if opts.ml != "off":
         from .ml import LayoutDetector
-        regions = LayoutDetector().detect(src, min(selected), max(selected))
+        regions = LayoutDetector(formulas=opts.mathml and opts.equations).detect(src, min(selected), max(selected))
     body_size = _sample_body_size(doc, selected)
     for pno in selected:
         pd = extract_page(doc, pno, with_images=opts.images, ocr=ocr, ocr_mode=opts.ocr,

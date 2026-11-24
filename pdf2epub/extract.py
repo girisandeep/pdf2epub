@@ -605,7 +605,9 @@ def _ml_formulas_figures(page: pymupdf.Page, regions, lines: list[Line], images:
             if members:
                 bbox = (min(r.bbox[0], *(m.x0 for m in members)), min(r.bbox[1], *(m.y0 for m in members)),
                         max(r.bbox[2], *(m.x1 for m in members)), max(r.bbox[3], *(m.y1 for m in members)))
-            out.append(_render(page, bbox, "equation", alt.replace("\ufffd", "").strip()))
+            img = _render(page, bbox, "equation", alt.replace("\ufffd", "").strip())
+            img.latex = r.latex
+            out.append(img)
             taken.update(id(m) for m in members)
         else:
             if any(_overlap(i.bbox, r.bbox) > 0.5 * _area(r.bbox) for i in images):

@@ -84,6 +84,7 @@ class ImageItem(Item):
     key: str = ""
     kind: str = "image"          # image | figure (rasterised vector art) | page (scan) | equation
     alt: str = ""
+    latex: str = ""              # recognised LaTeX (equations, when the formula model ran)
 
 
 @dataclass

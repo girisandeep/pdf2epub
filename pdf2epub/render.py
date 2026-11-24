@@ -7,6 +7,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 from .analyze import FN_SYMBOLS, DocStats, base_y
 from .model import Block, FootnoteDef, Line, Span
+from .mathml import equation_number, to_mathml
 from .text import _COMPOUND_PREFIX, english_words, known_word, norm_title
 
 URL_RE = re.compile(r"(?<![\w@/])((?:https?://|www\.)[^\s<>\"']+[^\s<>\"'.,;:!?)\]}])")
@@ -251,8 +252,14 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id) -> list[st
             href = ctx.image_href.get(im.key)
             if href and im.kind == "equation":
                 w = (im.width + 4) / max(ctx.stats.body_size, 6.0)
-                html.append(f'<div class="equation"><img class="equation" src="{href}" alt={quoteattr(im.alt[:300])} '
-                            f'style="width:{w:.2f}em"/></div>')
+                mathml = to_mathml(im.latex, im.alt, altimg=href) if im.latex else None
+                if mathml:
+                    no = equation_number(im.alt)
+                    tag = f'<span class="eqno">{escape(no)}</span>' if no else ""
+                    html.append(f'<div class="equation mathml">{mathml}{tag}</div>')
+                else:
+                    html.append(f'<div class="equation"><img class="equation" src="{href}" alt={quoteattr(im.alt[:300])} '
+                                f'style="width:{w:.2f}em"/></div>')
             elif href:
                 cap = inline_html(b.caption, ctx) if b.caption else ""
                 alt = escape(_plain(b.caption, ctx))[:200] if b.caption else ""

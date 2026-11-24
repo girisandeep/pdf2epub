@@ -25,6 +25,8 @@ def main(argv=None) -> int:
     ap.add_argument("--keep-running-heads", action="store_true", help="do not strip repeating headers/footers")
     ap.add_argument("--no-footnotes", action="store_true")
     ap.add_argument("--ml", action="store_true", help="use the deep-learning layout model (needs: pip install docling)")
+    ap.add_argument("--mathml", action="store_true",
+                    help="with --ml: recognise equations as LaTeX and emit MathML (~30 s/formula on CPU, cached; image fallback)")
     ap.add_argument("--no-equations", action="store_true", help="leave equations as plain text instead of images")
     ap.add_argument("--ignore-outline", action="store_true", help="do not use the PDF bookmarks to find headings")
     ap.add_argument("--report", help="write a JSON conversion report to this path")
@@ -45,7 +47,7 @@ def main(argv=None) -> int:
     opts = ConversionOptions(title=a.title, author=a.author, language=a.language, pages=a.pages,
                              images=not a.no_images, cover=a.cover, ocr=a.ocr, ocr_lang=a.ocr_lang,
                              split_level=a.split_level, keep_running_heads=a.keep_running_heads,
-                             footnotes=not a.no_footnotes, equations=not a.no_equations, ml="on" if a.ml else "off", use_outline=not a.ignore_outline)
+                             footnotes=not a.no_footnotes, equations=not a.no_equations, ml="on" if a.ml else "off", mathml=a.mathml, use_outline=not a.ignore_outline)
     rc, reports = 0, []
     for f in files:
         if len(files) == 1 and a.output:

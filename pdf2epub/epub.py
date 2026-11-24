@@ -20,6 +20,7 @@ code { font-family: Menlo, Consolas, "Courier New", monospace; font-size: .9em; 
 pre code { font-size: 1em; }
 figure { margin: 1.2em 0; text-align: center; page-break-inside: avoid; break-inside: avoid; }
 figure img { max-width: 100%; height: auto; }
+div.equation.mathml { position: relative; } span.eqno { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
 div.equation { text-align: center; margin: .9em 0; } img.equation { max-width: 100%; height: auto; vertical-align: middle; }
 figcaption { font-size: .88em; font-style: italic; margin-top: .4em; text-align: center; }
 table { border-collapse: collapse; margin: 1em auto; max-width: 100%; font-size: .9em; }
@@ -117,7 +118,8 @@ def write_epub(book: EpubBook, path: str) -> None:
         manifest.append('<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>')
         spine.append('<itemref idref="cover" linear="yes"/>')
     for i, c in enumerate(book.chapters):
-        manifest.append(f'<item id="c{i}" href="{c.filename}" media-type="application/xhtml+xml"/>')
+        props = ' properties="mathml"' if "<math" in c.body else ""
+        manifest.append(f'<item id="c{i}" href="{c.filename}" media-type="application/xhtml+xml"{props}/>')
         spine.append(f'<itemref idref="c{i}"/>')
     for j, (href, (_, mime)) in enumerate(book.images.items()):
         manifest.append(f'<item id="i{j}" href="{href}" media-type="{mime}"/>')
