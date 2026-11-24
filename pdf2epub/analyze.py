@@ -811,8 +811,11 @@ def attach_captions(blocks: list[Block]) -> list[Block]:
     for i, b in enumerate(blocks):
         if b.kind not in ("image", "table") or (b.image is not None and b.image.kind == "equation"):
             continue
-        order = (i + 1, i - 1) if b.kind == "image" else (i - 1, i + 1)
-        for j in order:
+        if b.kind == "image":
+            candidates = [i + d for d in (1, 2, 3, -1, -2, -3)]
+        else:
+            candidates = [i + d for d in (-1, -2, -3, 1, 2, 3)]
+        for j in candidates:
             if 0 <= j < len(blocks) and j not in drop and blocks[j].kind == "para" \
                     and (CAPTION_RE.match(blocks[j].text) or blocks[j].ml_label == "caption") \
                     and len(blocks[j].lines) <= 14 \
