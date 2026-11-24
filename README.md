@@ -110,8 +110,7 @@ fails on regressions against `tests/corpus_baseline.json` (`--update-baseline` t
 
 ## Known limits
 
-* Display equations are images (not MathML, so they don't reflow or recolour); inline math is styled text.
-* Algorithm/pseudocode boxes in papers are still flattened into ordinary paragraphs.
+* Display equations are images by default (not MathML); use `--ml --mathml` for reflowable MathML where the formula model is confident. Inline math is styled text.
 * Tables without any ruling lines and with no multi-line cells are not detected and stay as text.
 * Reading order for heavily irregular layouts (magazines, sidebars) is a best effort.
 * OCR quality depends on the engine; install Tesseract for the best results.

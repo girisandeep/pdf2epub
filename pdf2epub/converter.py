@@ -331,6 +331,7 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
     detected_title = A.detect_title(blocks, stats)
     blocks = A.merge_continuations(blocks, counters)
     blocks = A.demote_pseudo_code(blocks)
+    blocks = A.detect_algorithms(blocks)
     blocks = A.build_lists(blocks, counters)
     blocks = A.detect_toc(blocks, counters)
     blocks = A.attach_captions(blocks)

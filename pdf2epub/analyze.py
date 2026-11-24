@@ -689,6 +689,90 @@ def demote_pseudo_code(blocks: list[Block]) -> list[Block]:
     return blocks
 
 
+# ------------------------------------------------------------------ algorithms
+
+_ALGO_HEADER = re.compile(r"^\s*Algorithm\s+\d+", re.I)
+_ALGO_KEYWORD = re.compile(
+    r"^\s*(Require|Ensure|Input|Output|Procedure|Function|Initialize|Initialise)\s*:", re.I)
+_ALGO_LINE = re.compile(
+    r"←|\\leftarrow|:=|\bdo\b|\bthen\b|\belse\b|\bend\s+(if|for|while|loop|function|procedure)\b"
+    r"|\breturn\b|\bwhile\b.*\bdo\b|\bfor\b.*\bdo\b|\bif\b.*\bthen\b", re.I)
+
+
+def _is_pseudocode(b: Block) -> bool:
+    if b.kind not in ("para", "algorithm"):
+        return False
+    t = b.text.strip()
+    if _ALGO_KEYWORD.match(t):
+        return True
+    if _ALGO_LINE.search(t) and len(t) < 200:
+        return True
+    if "←" in t and len(t) < 200:
+        return True
+    return False
+
+
+def detect_algorithms(blocks: list[Block]) -> list[Block]:
+    """Detect algorithm/pseudocode blocks by structural patterns (Require/←/while...do)."""
+    out: list[Block] = []
+    i, n = 0, len(blocks)
+    while i < n:
+        b = blocks[i]
+        if b.kind in ("para", "heading") and _ALGO_HEADER.match(b.text.strip()):
+            run_start = i + 1
+            if b.kind == "heading":
+                out.append(b)
+                run_start = i + 1
+            else:
+                run_start = i
+            j = run_start
+            pseudocode_count = 0
+            while j < n and blocks[j].kind in ("para", "algorithm"):
+                if _is_pseudocode(blocks[j]):
+                    pseudocode_count += 1
+                elif pseudocode_count == 0:
+                    break
+                else:
+                    gap = blocks[j].y0 - blocks[j - 1].lines[-1].y1 if blocks[j - 1].lines else 0
+                    if gap > blocks[j].lines[0].size * 3 if blocks[j].lines else True:
+                        break
+                j += 1
+            if pseudocode_count >= 2 and j > run_start:
+                merged = Block("algorithm", blocks[run_start].page,
+                               region=blocks[run_start].region,
+                               y0=blocks[run_start].y0)
+                for k in range(run_start, j):
+                    merged.lines.extend(blocks[k].lines)
+                out.append(merged)
+                i = j
+                continue
+        elif b.kind == "para" and _ALGO_KEYWORD.match(b.text.strip()):
+            j = i
+            pseudocode_count = 0
+            while j < n and blocks[j].kind in ("para", "algorithm"):
+                if _is_pseudocode(blocks[j]):
+                    pseudocode_count += 1
+                elif pseudocode_count > 0:
+                    gap = blocks[j].y0 - blocks[j - 1].lines[-1].y1 if blocks[j - 1].lines else 0
+                    if gap > blocks[j].lines[0].size * 3 if blocks[j].lines else True:
+                        break
+                else:
+                    break
+                j += 1
+            if pseudocode_count >= 3 and j > i:
+                merged = Block("algorithm", blocks[i].page,
+                               region=blocks[i].region,
+                               y0=blocks[i].y0)
+                for k in range(i, j):
+                    merged.lines.extend(blocks[k].lines)
+                out.append(merged)
+                i = j
+                continue
+        out.append(b)
+        i += 1
+    return out
+
+
 # ------------------------------------------------------------------ bibliography
 
 _BIB_HEADING = re.compile(r"^(references|bibliography|works cited|cited literature|literaturverzeichnis)$", re.I)
