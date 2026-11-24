@@ -374,7 +374,7 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id) -> list[st
                     html.append(f'<div class="equation mathml"{aid}>{mathml}{tag}</div>')
                 else:
                     html.append(f'<div class="equation"{aid}><img class="equation" src="{href}" alt={quoteattr(im.alt[:300])} '
-                                f'style="width:{w:.2f}em"/></div>')
+                                f'role="img" style="width:{w:.2f}em"/></div>')
             elif href:
                 cap = inline_html(b.caption, ctx) if b.caption else ""
                 alt = escape(_plain(b.caption, ctx))[:200] if b.caption else ""
