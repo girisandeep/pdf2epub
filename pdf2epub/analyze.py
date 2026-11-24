@@ -281,6 +281,19 @@ def segment_page(items: list, page: int, st: DocStats) -> list[Block]:
     blocks: list[Block] = []
     rst = _region_stats(items)
     redge = _right_edges(items, rst)
+
+    for it in items:
+        if not isinstance(it, ImageItem):
+            continue
+        ix0, iy0, _, iy1 = it.bbox
+        for jt in items:
+            if not isinstance(jt, Line):
+                continue
+            cy = (jt.y0 + jt.y1) / 2
+            if iy0 - jt.height <= cy <= iy1 + jt.height \
+                    and ix0 > jt.x1 and ix0 < redge.get(id(jt), ix0 + 1):
+                redge[id(jt)] = ix0
+
     cur: Block | None = None
     prev: Line | None = None
 
@@ -606,6 +619,11 @@ def _try_merge(p: Block, b: Block, c: Counters) -> bool:
     return False
 
 
+def _short_fragment(b: Block) -> bool:
+    t = b.text.rstrip()
+    return len(t) < 40 and not t.endswith(TERMINAL)
+
+
 def merge_continuations(blocks: list[Block], c: Counters) -> list[Block]:
     out: list[Block] = []
     for b in blocks:
@@ -620,6 +638,9 @@ def merge_continuations(blocks: list[Block], c: Counters) -> list[Block]:
             p = _find_last_para(out)
             if p is not None and _try_merge(p, b, c):
                 continue
+        elif prev.kind == "para" and (_short_fragment(prev) or _short_fragment(b)) \
+                and _try_merge(prev, b, c):
+            continue
         out.append(b)
     return out
 
