@@ -660,6 +660,17 @@ def _is_real_heading(b: Block) -> bool:
     return bool(SECTION_WORDS.match(t) or _SECTION_NUM.match(t))
 
 
+_SEPARATOR_RE = re.compile(r"^[\s—–\-_=~·•.─━]{5,}$")
+
+
+def detect_separators(blocks: list[Block]) -> list[Block]:
+    """Convert paragraphs of repeated dashes/rules to separator blocks."""
+    for b in blocks:
+        if b.kind == "para" and b.lines and _SEPARATOR_RE.match(b.text.strip()):
+            b.kind = "separator"
+    return blocks
+
+
 def merge_title_page(blocks: list[Block]) -> list[Block]:
     """Merge short author/affiliation/email fragments on the first page into one block."""
     if not blocks:

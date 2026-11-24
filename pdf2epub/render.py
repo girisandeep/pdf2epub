@@ -354,6 +354,8 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id) -> list[st
             html.append(_render_list(blocks[i:j], ctx))
             i = j
             continue
+        elif k == "separator":
+            html.append("<hr/>")
         elif k == "code":
             html.append(render_code(b))
         elif k == "algorithm":
