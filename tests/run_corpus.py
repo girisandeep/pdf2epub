@@ -61,7 +61,7 @@ def evaluate(args: tuple) -> dict:
         doc = etree.fromstring(z.read(n))
         body.append(" ".join(doc.xpath("//x:body//text()", namespaces=NS)))
         body.append(" ".join(doc.xpath("//x:img[@class='equation']/@alt", namespaces=NS)))   # equation text kept as alt
-        for p in doc.xpath("//x:p", namespaces=NS):
+        for p in doc.xpath("//x:p|//x:li", namespaces=NS):
             paras.append(("".join(p.itertext()).strip(), len(p.xpath(".//x:sub|.//x:sup", namespaces=NS))))
         stats["mathml"] += len(doc.xpath("//*[local-name()='math']"))
         stats["eq"] += len(doc.xpath("//x:img[@class='equation']", namespaces=NS))

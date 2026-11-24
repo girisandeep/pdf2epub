@@ -687,3 +687,85 @@ def demote_pseudo_code(blocks: list[Block]) -> list[Block]:
         if b.kind == "code" and all(CODE_ISH_RE.match(l.text.strip()) for l in b.lines):
             b.kind = "para"
     return blocks
+
+
+# ------------------------------------------------------------------ bibliography
+
+_BIB_HEADING = re.compile(r"^(references|bibliography|works cited|cited literature|literaturverzeichnis)$", re.I)
+_BIB_MARKER = re.compile(r"^\s*\[(\d+)\]\s*")
+_BIB_ALPHA_MARKER = re.compile(r"^\s*\[([A-Z][A-Za-z+\d]{1,20})\]\s*")
+
+
+def format_bibliography(blocks: list[Block]) -> list[Block]:
+    """Detect [N]-style bibliography entries after a 'References' heading and format as a list."""
+    # Find the references heading
+    ref_idx = None
+    for i, b in enumerate(blocks):
+        if b.kind == "heading" and _BIB_HEADING.match(b.text.strip()):
+            ref_idx = i
+            break
+    if ref_idx is None:
+        return blocks
+
+    # Detect marker style: [N] numeric or [ABC+YY] alphabetic
+    numeric_count, alpha_count = 0, 0
+    for i in range(ref_idx + 1, min(ref_idx + 20, len(blocks))):
+        if blocks[i].kind != "para":
+            continue
+        if _BIB_MARKER.match(blocks[i].text):
+            numeric_count += 1
+        elif _BIB_ALPHA_MARKER.match(blocks[i].text):
+            alpha_count += 1
+    marker_re = _BIB_MARKER if numeric_count >= alpha_count else _BIB_ALPHA_MARKER
+    is_numeric = marker_re is _BIB_MARKER
+
+    # Collect marked paragraphs after the heading.  Tolerate non-matching paragraphs
+    # (continuation lines mis-merged with the next entry) and small gaps in numbering.
+    bib_entries: list[int] = []       # indices of matching paragraphs
+    last_num = 0
+    for i in range(ref_idx + 1, len(blocks)):
+        b = blocks[i]
+        if b.kind == "heading":
+            break
+        if b.kind != "para":
+            continue
+        m = marker_re.match(b.text)
+        if m:
+            if is_numeric:
+                num = int(m.group(1))
+                if num >= last_num:          # allow gaps (mis-merged entries)
+                    bib_entries.append(i)
+                    last_num = num
+            else:
+                bib_entries.append(i)
+
+    if len(bib_entries) < 3:
+        return blocks
+
+    bib_set = set(bib_entries)
+    bib_start = bib_entries[0]
+    bib_end = bib_entries[-1] + 1
+
+    # Convert bibliography paragraphs to list items
+    out = blocks[:bib_start]
+    for i in range(bib_start, bib_end):
+        b = blocks[i]
+        if i not in bib_set:
+            # Non-matching paragraph between bib entries — append to previous item
+            if out and out[-1].kind == "li":
+                out[-1].lines.extend(b.lines)
+            else:
+                out.append(b)
+            continue
+        m = marker_re.match(b.text)
+        if not m:
+            out.append(b)
+            continue
+        # Keep the [N] or [KEY] marker in the text — the list just groups them visually
+        b.kind = "li"
+        b.ordered = False        # unordered: the [N] marker stays inline
+        b.number = None
+        b.level = 1
+        out.append(b)
+    out.extend(blocks[bib_end:])
+    return out

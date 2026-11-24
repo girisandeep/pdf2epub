@@ -334,6 +334,7 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
     blocks = A.build_lists(blocks, counters)
     blocks = A.detect_toc(blocks, counters)
     blocks = A.attach_captions(blocks)
+    blocks = A.format_bibliography(blocks)
     blocks = [b for b in blocks if not (b.kind == "para" and not b.text.strip())]
 
     # ---- 6. metadata fallbacks -------------------------------------------------
