@@ -613,6 +613,8 @@ def _try_merge(p: Block, b: Block, c: Counters) -> bool:
     pl, nl = p.lines[-1], b.lines[0]
     if abs(pl.size - nl.size) > 0.8 or pl.bold != nl.bold:
         return False
+    if CAPTION_RE.match(b.text):
+        return False
     pend = p.text.rstrip()
     hy = pend.endswith(("-", "­"))
     term = pend.endswith(TERMINAL)
