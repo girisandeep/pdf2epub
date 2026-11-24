@@ -35,9 +35,11 @@ NS = {"x": "http://www.w3.org/1999/xhtml"}
 
 
 _LIGATURES = str.maketrans({"ﬁ": "fi", "ﬂ": "fl", "ﬀ": "ff", "ﬃ": "ffi", "ﬄ": "ffl"})
+_HYPHEN_EOL = re.compile(r"(\w)-\s*\n\s*(\w)")
 
 
 def toks(s: str) -> Counter:
+    s = _HYPHEN_EOL.sub(r"\1\2", s)
     return Counter(re.findall(r"[^\W_]+", s.lower().translate(_LIGATURES).replace("-", "")))
 
 
