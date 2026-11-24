@@ -25,6 +25,8 @@ _XREF_RE = re.compile(
     r"(?:\((\d+(?:\.\d+)*[a-z]?)\)|(\d+(?:\.\d+)*[a-z]?))"   # (4) or 1.2
     , re.I)
 
+_CITE_RE = re.compile(r"\[(\d+(?:\s*[,;]\s*\d+)*)\]")
+
 
 @dataclass
 class RenderCtx:
@@ -185,11 +187,12 @@ def _insert_xrefs(html: str, ctx: RenderCtx) -> str:
         if not linkable:
             out.append(text)
             continue
-        # Apply cross-reference linking to this text segment
+        # Apply cross-reference and citation linking to this text segment
         result = []
         last_end = 0
+        linked: set[tuple[int, int]] = set()
         for m in _XREF_RE.finditer(text):
-            number = m.group(2) or m.group(3)  # group 2 = parenthesized, group 3 = bare
+            number = m.group(2) or m.group(3)
             key = _xref_key(m.group(1), number)
             tgt = ctx.xref_targets.get(key)
             if not tgt:
@@ -199,6 +202,29 @@ def _insert_xrefs(html: str, ctx: RenderCtx) -> str:
             result.append(text[last_end:m.start()])
             result.append(f'<a href="{href}">{m.group()}</a>')
             last_end = m.end()
+            linked.add((m.start(), m.end()))
+        for m in _CITE_RE.finditer(text):
+            if any(s <= m.start() < e for s, e in linked):
+                continue
+            if m.start() < last_end:
+                continue
+            nums = re.split(r"[,;]\s*", m.group(1).strip())
+            parts_c = []
+            any_linked = False
+            for num in nums:
+                num = num.strip()
+                tgt = ctx.xref_targets.get(f"cite {num}")
+                if tgt:
+                    file, anchor = tgt
+                    href = f"#{anchor}" if file == ctx.current_file else f"{file}#{anchor}"
+                    parts_c.append(f'<a href="{href}">{num}</a>')
+                    any_linked = True
+                else:
+                    parts_c.append(num)
+            if any_linked:
+                result.append(text[last_end:m.start()])
+                result.append("[" + ", ".join(parts_c) + "]")
+                last_end = m.end()
         if result:
             result.append(text[last_end:])
             out.append("".join(result))
@@ -419,7 +445,8 @@ def _render_list(items: list[Block], ctx: RenderCtx) -> str:
         out = [f"<{tag}{attr}>"]
         while i < n and items[i].level == level and items[i].ordered == first.ordered:
             sink: list[FootnoteDef] = []
-            out.append(f"<li>{inline_html(items[i].lines, ctx, footnote_sink=sink)}")
+            aid = f' id="{items[i].anchor}"' if items[i].anchor else ""
+            out.append(f"<li{aid}>{inline_html(items[i].lines, ctx, footnote_sink=sink)}")
             out.extend(_fn_aside(fn, ctx) for fn in sink)
             i += 1
             while i < n and items[i].level > level:

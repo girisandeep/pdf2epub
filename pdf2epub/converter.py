@@ -193,6 +193,11 @@ def _build_xref_targets(blocks: list[Block], chapters: list[dict], ctx: RenderCt
                 b.anchor = b.anchor or f"xref{xid}"
                 ctx.xref_targets.setdefault(f"{kind} {num}", (file, b.anchor))
 
+        # --- bibliography entries ---
+        if b.kind == "li" and b.anchor and b.anchor.startswith("bib-"):
+            cite_key = b.anchor[4:]
+            ctx.xref_targets.setdefault(f"cite {cite_key}", (file, b.anchor))
+
         # --- headings with section numbers ---
         if b.kind == "heading" and b.anchor:
             text = b.synthetic_text if b.synthetic_text else " ".join(

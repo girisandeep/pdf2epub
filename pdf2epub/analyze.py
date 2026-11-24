@@ -1060,6 +1060,7 @@ def format_bibliography(blocks: list[Block]) -> list[Block]:
         b.ordered = False        # unordered: the [N] marker stays inline
         b.number = None
         b.level = 1
+        b.anchor = f"bib-{m.group(1)}"
         out.append(b)
     out.extend(blocks[bib_end:])
     return out
