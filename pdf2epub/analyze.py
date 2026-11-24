@@ -806,7 +806,7 @@ def detect_toc(blocks: list[Block], c: Counters) -> list[Block]:
     return out
 
 
-def attach_captions(blocks: list[Block]) -> list[Block]:
+def attach_captions(blocks: list[Block], body_size: float = 0) -> list[Block]:
     drop: set[int] = set()
     for i, b in enumerate(blocks):
         if b.kind not in ("image", "table") or (b.image is not None and b.image.kind == "equation"):
@@ -823,7 +823,50 @@ def attach_captions(blocks: list[Block]) -> list[Block]:
                 b.caption = blocks[j].lines
                 drop.add(j)
                 break
+
+    if body_size > 0:
+        _attach_captions_by_size(blocks, drop, body_size)
     return [b for k, b in enumerate(blocks) if k not in drop]
+
+
+def _avg_span_size(b: Block) -> float:
+    sizes = [s.size for l in b.lines for s in l.spans if s.text.strip()]
+    return sum(sizes) / len(sizes) if sizes else 999
+
+
+def _attach_captions_by_size(blocks: list[Block], drop: set[int], body_size: float) -> None:
+    """Attach captions to images based on font size (smaller than body = caption)."""
+    img_positions = {k for k, bl in enumerate(blocks)
+                     if bl.kind == "image" and not bl.caption
+                     and (bl.image is None or bl.image.kind != "equation")
+                     and (bl.image is None or min(bl.image.width, bl.image.height) >= 50)}
+    for i in sorted(img_positions):
+        b = blocks[i]
+        if b.caption:
+            continue
+        cap_lines = []
+        cap_idxs = []
+        for d in range(-10, 11):
+            j = i + d
+            if j == i or j < 0 or j >= len(blocks) or j in drop:
+                continue
+            c = blocks[j]
+            if c.kind != "para" or c.page != b.page or len(c.lines) > 3:
+                continue
+            if _avg_span_size(c) > body_size - 2.0:
+                continue
+            closer_img = any(k != i and k in img_positions and abs(j - k) < abs(j - i)
+                             for k in img_positions)
+            if closer_img:
+                continue
+            cap_lines.extend(c.lines)
+            cap_idxs.append(j)
+        if cap_idxs and sum(1 for j in cap_idxs if len(blocks[j].text.strip()) <= 5) > len(cap_idxs) / 2:
+            continue
+        merged = " ".join(s.text for l in cap_lines for s in l.spans).strip()
+        if len(merged) >= 15 and len(merged) <= 500 and any(ch.isalpha() for ch in merged):
+            b.caption = cap_lines
+            drop.update(cap_idxs)
 
 
 def detect_title(blocks: list[Block], st: DocStats) -> str | None:
