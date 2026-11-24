@@ -29,8 +29,8 @@ python3 -m venv .venv && .venv/bin/pip install -e '.[ocr,dev]'
 | Footnotes | Footnote areas located by size/position and linked to body markers as EPUB 3 `noteref`/`footnote` asides |
 | Printed TOC pages | Dot-leader contents pages become link lists pointing at the real headings |
 | Equations | Display equations (math fonts / relations + scripts, fraction pieces and equation numbers grouped) are rendered as images sized in `em`, with the text kept as `alt`; inline math stays as styled text. `--no-equations` disables |
-| Cross-references | Mentions of "Figure 1", "Table 2", "Section 3.1", "Eq. (4)" etc. in prose become clickable links to the actual figure, table, heading or equation — across chapters |
-| Bibliography | `[N]` numeric and `[KEY]` alphabetic citation entries after a "References" heading are reformatted as a list; continuation lines are merged |
+| Cross-references | Mentions of "Figure 1", "Table 2", "Section 3.1", "Eq. (4)", "Theorem 1", "Lemma 2" etc. in prose become clickable links to the actual figure, table, heading, equation or theorem — across chapters. Plural forms ("Tables 1, 2") are handled |
+| Bibliography | `[N]` numeric and `[KEY]` alphabetic citation entries after a "References" heading are reformatted as a list; continuation lines are merged. Inline citations like `[33]` or `[1, 2, 3]` become clickable links to the bibliography entry |
 | Code | Monospace runs → `<pre><code>` with indentation preserved; monospace URLs/emails stay inline |
 | Scans | Pages with no text layer are OCR'd: Tesseract if installed, otherwise RapidOCR (pure pip). Without either, the page image is embedded and a warning is printed |
 | Packaging | EPUB 3 + NCX, nested nav built from headings, cover from page 1, metadata/title/language detection, sensible chapter sizes |
