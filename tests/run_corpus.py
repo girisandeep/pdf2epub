@@ -39,7 +39,7 @@ def toks(s: str) -> Counter:
 
 
 def evaluate(args: tuple) -> dict:
-    pdf, equations, ml = args
+    pdf, equations, ml, mathml = args
     import pymupdf
     from lxml import etree
     from epub_check import check
@@ -48,7 +48,7 @@ def evaluate(args: tuple) -> dict:
     out = os.path.join(tempfile.mkdtemp(), "o.epub")
     t0 = time.time()
     try:
-        rep = convert(pdf, out, ConversionOptions(equations=equations, ml="on" if ml else "off"))
+        rep = convert(pdf, out, ConversionOptions(equations=equations, ml="on" if ml else "off", mathml=mathml))
     except Exception as e:                      # a crash is the worst regression
         return {"error": f"{type(e).__name__}: {e}"}
     secs = time.time() - t0
@@ -63,6 +63,7 @@ def evaluate(args: tuple) -> dict:
         body.append(" ".join(doc.xpath("//x:img[@class='equation']/@alt", namespaces=NS)))   # equation text kept as alt
         for p in doc.xpath("//x:p", namespaces=NS):
             paras.append(("".join(p.itertext()).strip(), len(p.xpath(".//x:sub|.//x:sup", namespaces=NS))))
+        stats["mathml"] += len(doc.xpath("//*[local-name()='math']"))
         stats["eq"] += len(doc.xpath("//x:img[@class='equation']", namespaces=NS))
     ref = toks(" ".join(p.get_text() for p in pymupdf.open(pdf)))
     got = toks(" ".join(body))
@@ -78,7 +79,7 @@ def evaluate(args: tuple) -> dict:
         "valid": check(out) == [],
         "frag_pct": round(100 * frag / max(len(texts), 1), 1),
         "mathjunk": sum(1 for t, s in paras if s >= 3 and len(t) < 120),
-        "dup": dup, "eq": stats["eq"], "paras": len(texts),
+        "dup": dup, "eq": stats["eq"], "mathml": stats["mathml"], "paras": len(texts),
     }
 
 
@@ -89,6 +90,7 @@ def main() -> int:
     ap.add_argument("--workers", type=int, default=0, help="parallel processes (default: 4, or 1 with --ml)")
     ap.add_argument("--ml", action="store_true", help="use the deep-learning layout model")
     ap.add_argument("--no-equations", action="store_true", help="measure without equation images (for before/after)")
+    ap.add_argument("--mathml", action="store_true", help="also convert formulas to MathML (needs --ml; slow; never touches baselines)")
     a = ap.parse_args()
     files = {}
     for d in sorted(os.listdir(CORPUS)):
@@ -96,10 +98,10 @@ def main() -> int:
         if os.path.isfile(p) and (not a.names or d in a.names):
             files[d] = p
     with ProcessPoolExecutor(max_workers=a.workers or (1 if a.ml else min(4, os.cpu_count() or 2))) as ex:
-        res = dict(zip(files, ex.map(evaluate, [(f, not a.no_equations, a.ml) for f in files.values()])))
+        res = dict(zip(files, ex.map(evaluate, [(f, not a.no_equations, a.ml, a.mathml) for f in files.values()])))
     bpath = BASELINE_ML if a.ml else BASELINE
     base = json.load(open(bpath)) if os.path.exists(bpath) else {}
-    cols = ["pages", "secs", "recall", "precision", "valid", "headings", "tables", "images", "frag_pct", "mathjunk", "dup", "eq"]
+    cols = ["pages", "secs", "recall", "precision", "valid", "headings", "tables", "images", "frag_pct", "mathjunk", "dup", "eq", "mathml"]
     print(f"{'doc':14}" + "".join(f"{c:>10}" for c in cols))
     problems = []
     for name, r in res.items():
@@ -117,7 +119,7 @@ def main() -> int:
         if r["dup"] > b["dup"]: problems.append(f"{name}: duplicated paragraphs {b['dup']} -> {r['dup']}")
         if b["valid"] and not r["valid"]: problems.append(f"{name}: EPUB no longer valid")
         if r["mathjunk"] > b["mathjunk"] + 1: problems.append(f"{name}: mathjunk {b['mathjunk']} -> {r['mathjunk']}")
-    if a.no_equations:
+    if a.no_equations or a.mathml:
         return 0
     if a.update_baseline:
         base.update(res)
