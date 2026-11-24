@@ -423,7 +423,7 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id) -> list[st
             elif href:
                 cap = inline_html(b.caption, ctx) if b.caption else ""
                 alt = escape(_plain(b.caption, ctx))[:200] if b.caption else ""
-                fig = f'<img src="{href}" alt="{alt}"/>'
+                fig = f'<img src="{href}" alt="{alt}" role="img"/>'
                 if cap:
                     fig += f"<figcaption>{cap}</figcaption>"
                 html.append(f"<figure{aid}>{fig}</figure>")
@@ -530,8 +530,12 @@ def _render_table(b: Block, ctx: RenderCtx) -> str:
         tag = "th" if (header and ri == 0) else "td"
         cells = []
         for c in r:
-            align = ' class="num"' if tag == "td" and numeric(c) else ""
-            cells.append(f"<{tag}{align}>{escape(c)}</{tag}>")
+            attrs = ""
+            if tag == "th":
+                attrs = ' scope="col"'
+            elif numeric(c):
+                attrs = ' class="num"'
+            cells.append(f"<{tag}{attrs}>{escape(c)}</{tag}>")
         row = "<tr>" + "".join(cells) + "</tr>"
         if header and ri == 0:
             row = "<thead>" + row + "</thead><tbody>"
