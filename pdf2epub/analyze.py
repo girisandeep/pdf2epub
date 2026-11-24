@@ -368,6 +368,51 @@ def _ml_heading_level(b: Block, key_level: dict) -> int | None:
 NON_HEADING_LABELS = {"list_item", "caption", "footnote", "formula", "code", "table"}
 
 
+def _numbered_section_fallback(blocks: list[Block]) -> None:
+    """Promote numbered section paragraphs when the primary classifier missed them.
+
+    Fires when ≥3 paragraphs match "N Title" and use a different font family from
+    the body text (e.g. Wikipedia PDFs that set headings in sans-serif while body is serif).
+    """
+    existing = sum(1 for b in blocks if b.kind == "heading")
+    numbered_missed: list[Block] = []
+    for b in blocks:
+        if b.kind == "para" and _candidate(b) and NUMBERED_RE.match(b.text):
+            t = b.text.strip()
+            if len(t) <= 100 and not t.rstrip().endswith((".", "?", "!", ",", ";")) \
+                    and len(t.split()) <= 14 and not CAPTION_RE.match(t):
+                numbered_missed.append(b)
+    if len(numbered_missed) < 3:
+        return
+    body_fonts = Counter()
+    for b in blocks:
+        if b.kind == "para" and not _candidate(b):
+            for l in b.lines:
+                for s in l.spans:
+                    if s.text.strip():
+                        body_fonts[s.font.split("-")[0]] += len(s.text)
+    body_font = body_fonts.most_common(1)[0][0] if body_fonts else ""
+    nm_fonts = Counter()
+    for b in numbered_missed:
+        for l in b.lines:
+            for s in l.spans:
+                if s.text.strip():
+                    nm_fonts[s.font.split("-")[0]] += len(s.text)
+    nm_font = nm_fonts.most_common(1)[0][0] if nm_fonts else ""
+    diff_font = nm_font and body_font and nm_font != body_font
+    nm_keys = Counter(_bkey(b) for b in numbered_missed)
+    dominant_key = nm_keys.most_common(1)[0] if nm_keys else (None, 0)
+    body_key_count = sum(1 for b in blocks if b.kind == "para" and not _candidate(b) and _bkey(b) == dominant_key[0])
+    distinct_style = dominant_key[1] >= 3 and body_key_count <= 2
+    if not (diff_font or distinct_style):
+        return
+    top = min((b.level for b in blocks if b.kind == "heading"), default=1) + 1 if existing else 2
+    for b in numbered_missed:
+        m = NUMBERED_RE.match(b.text)
+        depth = m.group(1).strip(".").count(".") if m else 0
+        b.kind, b.level, b.marker = "heading", min(top + depth, 4), None
+
+
 def _classify_with_layout(blocks: list[Block], c: Counters) -> list[Block]:
     """Model-labelled headers are authoritative; levels come from numbering ("3.2.1" -> 3) and style.
 
@@ -417,8 +462,9 @@ def _classify_with_layout(blocks: list[Block], c: Counters) -> list[Block]:
                 and not CAPTION_RE.match(t) and not t.endswith((".", ",", ";")) and k[1]:
             b.kind, b.level, b.marker = "heading", v.most_common(1)[0][0], None
             extra += 1
+    _numbered_section_fallback(blocks)
     c.heading_source = "layout-model"
-    c.headings = len(heads) + extra
+    c.headings = sum(1 for b in blocks if b.kind == "heading")
     return blocks
 
 
@@ -511,48 +557,8 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
         for k in accepted:
             for b in keys[k]:
                 mark(b, levels[k])
-    # numbered section fallback: when the primary classifier misses numbered sections
-    # (e.g. same-size different-font-family headings in Wikipedia PDFs), promote them
-    # if there are enough and they don't look like numbered list items.
-    # Only when no PDF outline is available — with an outline, numbered paragraphs
-    # on TOC pages would be false positives.
-    existing = sum(1 for b in blocks if b.kind == "heading")
-    numbered_missed: list[Block] = []
-    for b in blocks:
-        if b.kind == "para" and _candidate(b) and NUMBERED_RE.match(b.text):
-            t = b.text.strip()
-            if len(t) <= 100 and not t.rstrip().endswith((".","?","!",",",";")) \
-                    and len(t.split()) <= 14 and not CAPTION_RE.match(t):
-                numbered_missed.append(b)
-    if len(numbered_missed) >= 3 and not used_toc:
-        # check that the dominant font differs from body OR the blocks form a consistent style
-        body_fonts = Counter()
-        for b in blocks:
-            if b.kind == "para" and not _candidate(b):
-                for l in b.lines:
-                    for s in l.spans:
-                        if s.text.strip():
-                            body_fonts[s.font.split("-")[0]] += len(s.text)
-        body_font = body_fonts.most_common(1)[0][0] if body_fonts else ""
-        nm_fonts = Counter()
-        for b in numbered_missed:
-            for l in b.lines:
-                for s in l.spans:
-                    if s.text.strip():
-                        nm_fonts[s.font.split("-")[0]] += len(s.text)
-        nm_font = nm_fonts.most_common(1)[0][0] if nm_fonts else ""
-        diff_font = nm_font and body_font and nm_font != body_font
-        # also accept when all numbered blocks share a distinctive key not shared with body
-        nm_keys = Counter(_bkey(b) for b in numbered_missed)
-        dominant_key = nm_keys.most_common(1)[0] if nm_keys else (None, 0)
-        body_key_count = sum(1 for b in blocks if b.kind == "para" and not _candidate(b) and _bkey(b) == dominant_key[0])
-        distinct_style = dominant_key[1] >= 3 and body_key_count <= 2
-        if diff_font or distinct_style:
-            top = min((b.level for b in blocks if b.kind == "heading"), default=1) + 1 if existing else 2
-            for b in numbered_missed:
-                m = NUMBERED_RE.match(b.text)
-                depth = m.group(1).strip(".").count(".") if m else 0
-                mark(b, min(top + depth, 4))
+    if not used_toc:
+        _numbered_section_fallback(blocks)
 
     # synthetic headings from outline entries whose text could not be located
     for pno, lvl, title, dy in sorted(synth, key=lambda s: (s[0], s[3] or 0), reverse=True):
