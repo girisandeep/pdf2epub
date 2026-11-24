@@ -34,8 +34,11 @@ BASELINE_ML = os.path.join(HERE, "corpus_baseline_ml.json")
 NS = {"x": "http://www.w3.org/1999/xhtml"}
 
 
+_LIGATURES = str.maketrans({"ﬁ": "fi", "ﬂ": "fl", "ﬀ": "ff", "ﬃ": "ffi", "ﬄ": "ffl"})
+
+
 def toks(s: str) -> Counter:
-    return Counter(re.findall(r"[^\W_]+", s.lower().replace("-", "")))
+    return Counter(re.findall(r"[^\W_]+", s.lower().translate(_LIGATURES).replace("-", "")))
 
 
 def evaluate(args: tuple) -> dict:
