@@ -35,6 +35,16 @@ ul.toc { list-style: none; padding-left: 0; } ul.toc li { margin-bottom: .4em; }
 hr { border: none; border-top: 1px solid #999; margin: 1.5em 15%; }
 sup, sub { line-height: 0; }
 .cover { text-align: center; margin: 0; padding: 0; } .cover img { max-width: 100%; max-height: 100%; }
+@media (prefers-color-scheme: dark) {
+  body { color: #ddd; background: #1a1a1a; }
+  pre { background: #2a2a2a; }
+  th { background: #333; }
+  th, td { border-color: #555; }
+  .algorithm { background: #252520; border-color: #444; }
+  aside.footnote { border-left-color: #555; }
+  hr { border-top-color: #555; }
+  a { color: #7cafc2; }
+}
 """
 
 
@@ -138,7 +148,15 @@ def write_epub(book: EpubBook, path: str) -> None:
            f'</metadata>\n<manifest>\n{chr(10).join(manifest)}\n</manifest>\n'
            f'<spine toc="ncx">\n{chr(10).join(spine)}\n</spine>\n</package>\n')
 
-    nav_body = ('<nav epub:type="toc" id="toc"><h1>Contents</h1>' + _nav_ol(tree) + "</nav>")
+    landmarks = ['<nav epub:type="landmarks" hidden="hidden"><h2>Guide</h2><ol>']
+    if book.cover:
+        landmarks.append('<li><a epub:type="cover" href="cover.xhtml">Cover</a></li>')
+    landmarks.append('<li><a epub:type="toc" href="nav.xhtml">Contents</a></li>')
+    if book.chapters:
+        landmarks.append(f'<li><a epub:type="bodymatter" href="{book.chapters[0].filename}">Start</a></li>')
+    landmarks.append('</ol></nav>')
+    nav_body = ('<nav epub:type="toc" id="toc"><h1>Contents</h1>' + _nav_ol(tree) + "</nav>\n"
+                + "".join(landmarks))
     nav = xhtml("Contents", nav_body, lang)
     ncx = ('<?xml version="1.0" encoding="utf-8"?>\n<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">'
            f'<head><meta name="dtb:uid" content="{escape(book.identifier)}"/><meta name="dtb:depth" content="{max(_depth(tree), 1)}"/>'
