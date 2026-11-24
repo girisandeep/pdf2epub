@@ -19,6 +19,7 @@ _XREF_RE = re.compile(
     r"(Fig(?:ure)?s?\.?|Tables?|Tab\.|"
     r"Eq(?:uation)?s?\.?|"
     r"(?:Sub)?[Ss]ections?|Sect?\.|§|"
+    r"Chapters?|Parts?|"
     r"Appendi(?:x|ces)|Algorithms?|Theorems?|Lemmas?|"
     r"Corollar(?:y|ies)|Propositions?|Definitions?)"
     r"\s*"
@@ -138,6 +139,10 @@ def _xref_key(kind: str, number: str) -> str:
     elif k.startswith("eq"):
         k = "equation"
     elif k in ("§",) or k.startswith("sec") or k.startswith("subsec"):
+        k = "section"
+    elif k.startswith("chapter"):
+        k = "section"
+    elif k.startswith("part"):
         k = "section"
     elif k.startswith("appendi"):
         k = "appendix"

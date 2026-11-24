@@ -32,6 +32,7 @@ aside.footnote p { margin: 0; } a.fn-back { text-decoration: none; font-weight: 
 ul.toc { list-style: none; padding-left: 0; } ul.toc li { margin-bottom: .4em; }
 .algorithm { background: #f8f8f0; border: 1px solid #ddd; padding: .6em .8em; margin: 0 0 1em; border-radius: 3px; }
 .algorithm pre { font-family: Georgia, "Times New Roman", serif; font-size: .95em; line-height: 1.5; background: none; padding: 0; margin: 0; border-radius: 0; }
+hr { border: none; border-top: 1px solid #999; margin: 1.5em 15%; }
 sup, sub { line-height: 0; }
 .cover { text-align: center; margin: 0; padding: 0; } .cover img { max-width: 100%; max-height: 100%; }
 """
