@@ -352,6 +352,8 @@ def _candidate(b: Block) -> bool:
     ts = t.strip()
     if _ALGO_KEYWORD.match(ts) or re.match(r"^end\s+(if|for|while|loop|function|procedure)$", ts, re.I):
         return False
+    if list_marker_bullet(ts):
+        return False
     return True
 
 

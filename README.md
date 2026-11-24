@@ -71,11 +71,11 @@ How the labels are used, and how they are kept from doing harm:
 * **Algorithms**: regions the model labels as `code` but that use a proportional font are rendered as styled
   algorithm/pseudocode blocks instead of individual paragraphs, cutting fragment and mathjunk counts.
 
-Measured on the 10-document corpus (`tests/run_corpus.py`, heuristics → `--ml`): stray fragments `vae` 15%→4%,
-`adam` 18%→12%, `attention` 2%→1%, `resnet` 10%→3%, `bert` 12%→6%, `thinkpython` 3%→2%, `wiki_de` 7%→6%;
-math junk `vae` 15→6, `adam` 18→12; `irs_pub` headings 99→85 by removing ~14 list items wrongly promoted to
-headings; recall equal or better (−0.5 pt on `thinkpython`/−0.1 pt on `wiki_de`, which is page headers/footers
-now correctly removed).
+Measured on the 10-document corpus (`tests/run_corpus.py`, heuristics → `--ml`): stray fragments `vae` 12%→4%,
+`adam` 16%→12%, `attention` 2%→1%, `resnet` 9%→3%, `bert` 10%→6%, `thinkpython` 3%→2%, `wiki_de` 5%→6%;
+math junk `vae` 11→6, `adam` 8→12; `irs_pub` headings 85→85 (heuristic now matches ML by excluding bullet list
+items from heading candidates); recall equal or better (−0.5 pt on `thinkpython`/−0.1 pt on `wiki_de`, which is
+page headers/footers now correctly removed).
 Speed: roughly 1 s/page on Apple-silicon CPU/MPS for the model.
 
 ### Table structure (`--ml`, on by default; `--no-ml-tables` to skip)
