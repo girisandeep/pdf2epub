@@ -354,7 +354,7 @@ def render_code(b: Block) -> str:
     for blanks, raw in rows:
         out.extend([""] * blanks)
         out.append(raw[common:])
-    return "<pre><code>" + escape("\n".join(out)) + "</code></pre>"
+    return "<pre><code>" + _linkify(escape("\n".join(out))) + "</code></pre>"
 
 
 def render_algorithm(b: Block) -> str:
