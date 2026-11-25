@@ -922,7 +922,14 @@ def detect_toc(blocks: list[Block], c: Counters) -> list[Block]:
             t = bk.text.strip()
             m = TOC_LINE_RE.match(t)
             if m:
-                run.append((m.group("t").strip(" .·…"), m.group("n")))
+                title = m.group("t").strip(" .·…")
+                if ". . ." in title or "·· " in title:
+                    for sm in re.finditer(
+                        r"(.*?\S)\s*(?:\.[\s.]{2,}|·{2,}|…+)\s*(\d{1,4})", t
+                    ):
+                        run.append((sm.group(1).strip(" .·…"), sm.group(2)))
+                else:
+                    run.append((title, m.group("n")))
                 j += 1
             elif _DOTLEADER_RE.match(t):
                 run.append((_DOTLEADER_RE.match(t).group("t").strip(" .·…"), ""))
