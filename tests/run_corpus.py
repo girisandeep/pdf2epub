@@ -65,7 +65,8 @@ def evaluate(args: tuple) -> dict:
             continue
         doc = etree.fromstring(z.read(n))
         body.append(" ".join(doc.xpath("//x:body//text()", namespaces=NS)))
-        body.append(" ".join(doc.xpath("//x:img[@class='equation']/@alt", namespaces=NS)))   # equation text kept as alt
+        body.append(" ".join(doc.xpath("//x:img[@class='equation']/@alt", namespaces=NS)))
+        body.append(" ".join(doc.xpath("//x:figure[not(x:figcaption)]/x:img/@alt", namespaces=NS)))
         for p in doc.xpath("//x:p|//x:li|//x:dd|//x:dt", namespaces=NS):
             par = p.getparent()
             if par is not None and par.get("class") == "toc":

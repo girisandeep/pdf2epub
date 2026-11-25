@@ -570,6 +570,8 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
                             continue
                         if not any(c.isalpha() for c in ts):
                             continue
+                        if TOC_LINE_RE.match(ts):
+                            continue
                         if k[0] <= body * 1.05:
                             if ts.endswith(".") or CAPTION_RE.match(ts) or ts[:1].islower():
                                 continue
@@ -586,6 +588,8 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
             if t.rstrip().endswith(("-", "­")):
                 continue
             if not any(c.isalpha() for c in t):
+                continue
+            if TOC_LINE_RE.match(t.strip()):
                 continue
             if size >= body * 1.12:
                 keys[(size, bold, False)].append(b)
@@ -886,17 +890,24 @@ def _strip_marker(b: Block) -> None:
     first.spans = spans
 
 
+_SECTION_NUM_ONLY = re.compile(r"^\s*\d+(\.\d+)*\s*$")
+
+
 def detect_toc(blocks: list[Block], c: Counters) -> list[Block]:
     out: list[Block] = []
     i = 0
     while i < len(blocks):
-        run, j = [], i
+        run, j, skipped = [], i, 0
         while j < len(blocks) and blocks[j].kind == "para" and len(blocks[j].lines) <= 2:
             m = TOC_LINE_RE.match(blocks[j].text.strip())
-            if not m:
+            if m:
+                run.append((m.group("t").strip(" .·…"), m.group("n")))
+                j += 1
+            elif _SECTION_NUM_ONLY.match(blocks[j].text.strip()) and skipped < len(run) + 3:
+                skipped += 1
+                j += 1
+            else:
                 break
-            run.append((m.group("t").strip(" .·…"), m.group("n")))
-            j += 1
         avg_len = sum(len(t) for t, _ in run) / max(len(run), 1) if run else 0
         min_entries = 5 if avg_len < 25 else 3
         if len(run) >= min_entries:

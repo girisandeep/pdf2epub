@@ -381,6 +381,10 @@ def _extract_tables(page: pymupdf.Page, area: float) -> list[TableItem]:
         bb = tuple(t.bbox)
         if _area(bb) > 0.92 * area:
             continue
+        _toc_re = re.compile(r".*\S\s*(?:\.[\s.]{2,}|·{2,}|…+)\s*\d{1,4}\s*$")
+        toc_rows = sum(1 for r in rows if _toc_re.match(" ".join(c for c in r if c)))
+        if toc_rows > 0.5 * len(rows):
+            continue
         out.append(TableItem(bbox=bb, page=page.number, rows=rows))
     for rt in _ruled_tables(page, words, area):
         if not any(_overlap(rt.bbox, t.bbox) > 0.3 * _area(rt.bbox) for t in out):
@@ -508,8 +512,9 @@ def _vector_figures(page: pymupdf.Page, lines: list[Line], tables: list[TableIte
                for i in images):
             continue
         data, w, h = _render_clip(page, tuple(r + (-2, -2, 2, 2)))
+        alt = " ".join(l.text.strip() for l in sorted(inside, key=lambda l: (round(l.y0 / 3), l.x0)) if l.text.strip())
         figs.append(ImageItem(bbox=tuple(r), page=page.number, data=data, ext="png", px_w=w, px_h=h,
-                              key=hashlib.sha1(data).hexdigest()[:16], kind="figure"))
+                              key=hashlib.sha1(data).hexdigest()[:16], kind="figure", alt=alt[:500]))
         lines[:] = [l for l in lines if l not in inside]
     return figs
 
