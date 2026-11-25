@@ -709,8 +709,16 @@ def merge_continuations(blocks: list[Block], c: Counters) -> list[Block]:
                 continue
         elif prev.kind == "image":
             p = _find_last_para(out)
-            if p is not None and _try_merge(p, b, c):
-                continue
+            if p is not None:
+                if _try_merge(p, b, c):
+                    continue
+                pt = p.text.rstrip()
+                if len(pt) < 50 and not pt.endswith(TERMINAL) and not CAPTION_RE.match(b.text):
+                    p.lines += b.lines
+                    p.full_last = b.full_last
+                    p.region, p.page = b.region, b.page
+                    c.merged_paragraphs += 1
+                    continue
         elif prev.kind == "table":
             p = _find_last_para(out)
             if p is not None and p.text.rstrip().endswith(("-", "­")) and _try_merge(p, b, c):
