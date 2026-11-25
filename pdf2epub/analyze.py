@@ -1084,6 +1084,17 @@ def detect_toc(blocks: list[Block], c: Counters) -> list[Block]:
                         r"(.*?\S)\s*(?:\.[\s.]{2,}|·{2,}|…+)\s*(\d{1,4})", t
                     ):
                         run.append((sm.group(1).strip(" .·…"), sm.group(2)))
+                elif len(bk.lines) > 1 and "  " in title:
+                    per_line: list[tuple[str, str]] = []
+                    for ln in bk.lines:
+                        lt = ln.text.strip()
+                        lm = TOC_LINE_RE.match(lt)
+                        if lm:
+                            per_line.append((lm.group("t").strip(" .·…"), lm.group("n")))
+                    if len(per_line) >= 2:
+                        run.extend(per_line)
+                    else:
+                        run.append((title, m.group("n")))
                 else:
                     run.append((title, m.group("n")))
                 j += 1
