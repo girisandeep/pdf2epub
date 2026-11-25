@@ -103,6 +103,18 @@ _AUTHOR_JUNK = re.compile(r"[∗†‡§¶\d,]+$")
 _SECTION_START = re.compile(
     r"^(abstract|introduction|contents|1\s|1\.\s|§1)", re.I)
 
+_META_AUTHOR_BAD = re.compile(r"[:\\{}]|^\d|^[A-Z]{2,}(:[A-Z]{2,})+$")
+
+
+def _valid_meta_author(s: str) -> bool:
+    if not s or len(s) < 3:
+        return False
+    if _META_AUTHOR_BAD.search(s):
+        return False
+    if not any(c.isalpha() for c in s):
+        return False
+    return True
+
 
 def _extract_authors(blocks: list[Block], body_size: float) -> Optional[str]:
     """Extract author names from the first page by looking between the title and Abstract."""
@@ -169,8 +181,40 @@ def _extract_authors(blocks: list[Block], body_size: float) -> Optional[str]:
             continue
         authors.append(name)
     if not authors:
+        authors = _authors_from_table(blocks, title_idx, end_idx)
+    if not authors:
         return None
     return ", ".join(authors[:8])
+
+
+_NAME_PART = re.compile(r"^[A-Z][a-z]+\.?$|^[A-Z]\.$|^(?:de|di|van|von|der|del|la|le|al|el)$")
+_MARKER_SPLIT = re.compile(r"[∗†‡§¶]+")
+
+
+def _authors_from_table(blocks: list[Block], title_idx: int, end_idx: int) -> list[str]:
+    """Extract author names from a table block between title and Abstract (e.g. GPT-3)."""
+    for i in range(title_idx + 1, end_idx):
+        b = blocks[i]
+        if b.kind != "table" or not b.table or not b.table.rows:
+            continue
+        names = []
+        for row in b.table.rows:
+            for cell in row:
+                cell = cell.strip()
+                if not cell:
+                    continue
+                for fragment in _MARKER_SPLIT.split(cell):
+                    fragment = fragment.strip()
+                    if not fragment:
+                        continue
+                    if _INSTITUTION_RE.search(fragment):
+                        continue
+                    words = fragment.split()
+                    if 2 <= len(words) <= 5 and all(_NAME_PART.match(w) for w in words):
+                        names.append(fragment)
+        if names:
+            return names
+    return []
 
 
 def _clean_title(t: Optional[str]) -> Optional[str]:
@@ -398,7 +442,10 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
             pages = pages[1:]          # the cover already shows this page
     meta = doc.metadata or {}
     title = opts.title or _clean_title(meta.get("title"))
-    author = opts.author or (meta.get("author") or "").strip() or None
+    raw_author = (meta.get("author") or "").strip()
+    if raw_author and not _valid_meta_author(raw_author):
+        raw_author = ""
+    author = opts.author or raw_author or None
 
     # ---- 3. statistics & cleanup --------------------------------------------
     stats = A.compute_stats(pages)
