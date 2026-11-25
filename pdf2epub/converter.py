@@ -241,6 +241,9 @@ _strip_numbering = strip_numbering
 _CAPTION_NUM = re.compile(
     r"^\s*(Fig(?:ure)?s?\.?|Table|Tab\.|Algorithm|Listing|Scheme|Exhibit)"
     r"\s*(\d+(?:\.\d+)*[a-z]?)\s*[.:)\s-]", re.I)
+_CAPTION_NUM_INNER = re.compile(
+    r"(Fig(?:ure)?s?\.?|Table|Tab\.|Algorithm|Listing|Scheme|Exhibit)"
+    r"\s*(\d+(?:\.\d+)*[a-z]?)\s*[.:)\s-]", re.I)
 
 _THEOREM_NUM = re.compile(
     r"^\s*(Theorem|Lemma|Corollary|Proposition|Definition|Remark|Conjecture|Claim|Example|Fact)"
@@ -286,6 +289,19 @@ def _build_xref_targets(blocks: list[Block], chapters: list[dict], ctx: RenderCt
                 b.anchor = b.anchor or f"xref{xid}"
                 ctx.xref_targets.setdefault(f"{kind} {num}", (file, b.anchor))
 
+        # --- figures with caption baked into image alt text ---
+        if b.kind == "image" and b.image and not b.caption:
+            alt = b.image.alt or ""
+            m = _CAPTION_NUM_INNER.search(alt)
+            if m:
+                kind = _canon(m.group(1))
+                num = m.group(2)
+                key = f"{kind} {num}"
+                if key not in ctx.xref_targets:
+                    xid += 1
+                    b.anchor = b.anchor or f"xref{xid}"
+                    ctx.xref_targets.setdefault(key, (file, b.anchor))
+
         # --- equations (from equation number in alt text) ---
         if b.kind == "image" and b.image and b.image.kind == "equation":
             eqno = equation_number(b.image.alt or "")
@@ -305,6 +321,20 @@ def _build_xref_targets(blocks: list[Block], chapters: list[dict], ctx: RenderCt
                 xid += 1
                 b.anchor = b.anchor or f"xref{xid}"
                 ctx.xref_targets.setdefault(f"algorithm {m.group(1)}", (file, b.anchor))
+
+        # --- tables with caption absorbed into cell content ---
+        if b.kind == "table" and b.table:
+            for row in b.table.rows:
+                for cell in row:
+                    m = _CAPTION_NUM.match(cell.strip())
+                    if m:
+                        kind = _canon(m.group(1))
+                        num = m.group(2)
+                        key = f"{kind} {num}"
+                        if key not in ctx.xref_targets:
+                            xid += 1
+                            b.anchor = b.anchor or f"xref{xid}"
+                            ctx.xref_targets.setdefault(key, (file, b.anchor))
 
         # --- standalone caption paragraphs (not attached to image/table) ---
         if b.kind == "para" and b.lines:
