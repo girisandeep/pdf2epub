@@ -15,6 +15,7 @@ h1 { font-size: 1.8em; margin-top: 2em; } h2 { font-size: 1.45em; } h3 { font-si
 p { margin: 0 0 .85em; orphans: 2; widows: 2; }
 p.quote { margin-left: 1.5em; margin-right: 1.5em; }
 ul, ol { margin: 0 0 .9em; padding-left: 1.6em; } li { margin: 0 0 .3em; }
+dl { margin: 0 0 .9em; } dt { font-weight: bold; margin: .5em 0 .15em; } dd { margin: 0 0 .3em 1.2em; }
 pre { font-family: Menlo, Consolas, "Courier New", monospace; font-size: .85em; line-height: 1.3; background: #f5f5f5; padding: .6em .8em; margin: 0 0 1em; white-space: pre-wrap; overflow-wrap: anywhere; border-radius: 3px; }
 code { font-family: Menlo, Consolas, "Courier New", monospace; font-size: .9em; }
 pre code { font-size: 1em; }

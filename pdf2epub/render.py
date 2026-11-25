@@ -433,6 +433,13 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id) -> list[st
                 html.append(f"<p{attrs}>{body}</p>")
             for fn in sink:
                 html.append(_fn_aside(fn, ctx))
+        elif k == "dl":
+            j = i
+            while j < n and blocks[j].kind == "dl":
+                j += 1
+            html.append(_render_defn_list(blocks[i:j], ctx))
+            i = j
+            continue
         elif k == "li":
             j = i
             while j < n and blocks[j].kind == "li":
@@ -507,6 +514,40 @@ def _render_list(items: list[Block], ctx: RenderCtx) -> str:
         html, i = build(i, items[i].level)
         parts.append(html)
     return "".join(parts)
+
+
+def _render_defn_list(items: list[Block], ctx: RenderCtx) -> str:
+    out = ["<dl>"]
+    for b in items:
+        term_spans: list[Span] = []
+        desc_lines: list[Line] = []
+        if b.lines and b.lines[0].spans:
+            first_line = b.lines[0]
+            split_idx = 0
+            for si, s in enumerate(first_line.spans):
+                if s.bold and s.text.rstrip().endswith(":"):
+                    split_idx = si + 1
+                    break
+                elif s.bold:
+                    split_idx = si + 1
+                else:
+                    break
+            term_spans = first_line.spans[:split_idx]
+            rest_spans = first_line.spans[split_idx:]
+            if rest_spans:
+                rest_line = Line(bbox=first_line.bbox, page=first_line.page, spans=rest_spans)
+                desc_lines = [rest_line] + b.lines[1:]
+            else:
+                desc_lines = b.lines[1:]
+        term_text = "".join(s.text for s in term_spans).strip().rstrip(":")
+        out.append(f"<dt>{escape(term_text)}</dt>")
+        sink: list[FootnoteDef] = []
+        dd_html = inline_html(desc_lines, ctx, footnote_sink=sink) if desc_lines else ""
+        out.append(f"<dd>{dd_html}")
+        out.extend(_fn_aside(fn, ctx) for fn in sink)
+        out.append("</dd>")
+    out.append("</dl>")
+    return "".join(out)
 
 
 def _render_structured_table(b: Block, ctx: RenderCtx) -> str:

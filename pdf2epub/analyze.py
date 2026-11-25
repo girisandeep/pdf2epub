@@ -850,7 +850,7 @@ def detect_definition_lists(blocks: list[Block], c: Counters) -> list[Block]:
             if i - start >= 3:
                 c.lists += 1
                 for k in range(start, i):
-                    blocks[k].kind = "li"
+                    blocks[k].kind = "dl"
                     blocks[k].level = 0
                     blocks[k].ordered = False
             continue
