@@ -790,7 +790,7 @@ def _try_merge(p: Block, b: Block, c: Counters) -> bool:
     lower = _starts_lower(b.text)
     if CAPTION_RE.match(b.text):
         return False
-    if CAPTION_RE.match(p.text) and not (hy and lower):
+    if CAPTION_RE.match(p.text) and len(p.text) < 60 and not (hy and lower):
         return False
     cont_term = pend.endswith((")", "]"))
     if pl_bold != nl_bold and not (lower and (not term or cont_term)):
