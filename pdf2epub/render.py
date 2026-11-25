@@ -81,7 +81,7 @@ def line_segments(lines: list[Line], ctx: RenderCtx, strip_bold: bool = False) -
         if li + 1 < len(lines):
             nxt = lines[li + 1].text.lstrip()
             last = "".join(t for t, _ in segs).rstrip()
-            if last.endswith(("-", "­")) and nxt[:1].islower() and len(last) > 1 and last[-2].isalpha():
+            if last.endswith(("-", "­")) and nxt[:1].isalpha() and len(last) > 1 and last[-2].isalpha():
                 pm = re.search(r"([^\W\d_]+)[-\u00ad]$", last)
                 sm = re.match(r"[^\W\d_]+", nxt)
                 t, st = segs[-1]
