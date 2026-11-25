@@ -16,7 +16,7 @@ from .layout import reading_order
 from .model import Block, FootnoteDef
 from .mathml import equation_number
 from .render import RenderCtx, inline_html, render_blocks
-from .text import guess_language, norm_title
+from .text import guess_language, norm_title, strip_numbering
 
 log = logging.getLogger("pdf2epub")
 
@@ -233,8 +233,7 @@ def _heading_plain(b: Block, ctx: RenderCtx) -> str:
     return html.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").strip()
 
 
-def _strip_numbering(t: str) -> str:
-    return re.sub(r"^(chapter|part|section)?\s*([\dIVXLC]+[.)]?\s+|[\d.]+\s+)", "", norm_title(t)).strip()
+_strip_numbering = strip_numbering
 
 
 # ---- cross-reference targets -------------------------------------------------

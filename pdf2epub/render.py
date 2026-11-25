@@ -8,7 +8,7 @@ from xml.sax.saxutils import escape, quoteattr
 from .analyze import FN_SYMBOLS, DocStats, base_y
 from .model import Block, FootnoteDef, Line, Span
 from .mathml import equation_number, to_mathml
-from .text import _COMPOUND_PREFIX, english_words, known_word, norm_title
+from .text import _COMPOUND_PREFIX, english_words, known_word, norm_title, strip_numbering
 
 URL_RE = re.compile(r"(?<![\w@/])((?:https?://|www\.)[^\s<>\"']+[^\s<>\"'.,;:!?)\]}])")
 MAIL_RE = re.compile(r"(?<![\w.@])([\w.+-]+@[\w-]+(?:\.[\w-]+)+)")
@@ -640,6 +640,10 @@ def _render_toc(b: Block, ctx: RenderCtx) -> str:
     items = []
     for title, label in b.entries:
         tgt = ctx.heading_targets.get(norm_title(title))
+        if not tgt:
+            sn = strip_numbering(title)
+            if sn != norm_title(title):
+                tgt = ctx.heading_targets.get(sn)
         label_html = escape(title)
         if tgt:
             f, hid = tgt

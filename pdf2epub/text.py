@@ -74,6 +74,15 @@ def norm_title(text: str) -> str:
     return re.sub(r"[^\w]+", " ", text).strip()
 
 
+def strip_numbering(text: str) -> str:
+    text = re.sub(
+        r"^(?:chapter|part|section|appendix|annex)?\s*"
+        r"(?:[\dIVXLC]+[.)]?\s+|[\d.]+\s+|[A-Z][.)]\s+)",
+        "", text, flags=re.I,
+    ).strip()
+    return norm_title(text)
+
+
 def guess_language(text: str) -> str:
     words = re.findall(r"[^\W\d_]+", text.lower())[:6000]
     if len(words) < 30:
