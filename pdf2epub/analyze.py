@@ -907,6 +907,7 @@ def _strip_marker(b: Block) -> None:
 
 
 _SECTION_NUM_ONLY = re.compile(r"^\s*\d+(\.\d+)*\s*$")
+_DOTLEADER_RE = re.compile(r"^(?P<t>.*?\S)\s*(?:\.[\s.]{5,}|·{3,}|…{2,})\s*\.?\s*$")
 
 
 def detect_toc(blocks: list[Block], c: Counters) -> list[Block]:
@@ -914,12 +915,25 @@ def detect_toc(blocks: list[Block], c: Counters) -> list[Block]:
     i = 0
     while i < len(blocks):
         run, j, skipped = [], i, 0
-        while j < len(blocks) and blocks[j].kind == "para" and len(blocks[j].lines) <= 2:
-            m = TOC_LINE_RE.match(blocks[j].text.strip())
+        while j < len(blocks) and len(blocks[j].lines) <= 3:
+            bk = blocks[j]
+            if bk.kind not in ("para", "heading"):
+                break
+            t = bk.text.strip()
+            m = TOC_LINE_RE.match(t)
             if m:
                 run.append((m.group("t").strip(" .·…"), m.group("n")))
                 j += 1
-            elif _SECTION_NUM_ONLY.match(blocks[j].text.strip()) and skipped < len(run) + 3:
+            elif _DOTLEADER_RE.match(t):
+                run.append((_DOTLEADER_RE.match(t).group("t").strip(" .·…"), ""))
+                j += 1
+            elif _SECTION_NUM_ONLY.match(t) and skipped < len(run) + 3:
+                skipped += 1
+                j += 1
+            elif run and ". . ." in t and len(t) < 120:
+                skipped += 1
+                j += 1
+            elif bk.kind == "heading" and len(run) >= 3 and len(t) < 80:
                 skipped += 1
                 j += 1
             else:
