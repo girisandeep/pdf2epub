@@ -364,7 +364,7 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
     blocks = [b for b in blocks if not (b.kind == "para" and not b.text.strip())]
     blocks = [b for b in blocks if not (
         b.kind == "para" and len(b.text.strip()) <= 3
-        and b.lines and max(l.size for l in b.lines) < stats.body_size * 0.9
+        and b.lines and max(l.size for l in b.lines) <= stats.body_size * 0.9
     )]
 
     # ---- 6. metadata fallbacks -------------------------------------------------
