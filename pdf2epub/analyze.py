@@ -35,6 +35,8 @@ def footnote_marker(l: Line) -> str | None:
 SECTION_WORDS = re.compile(r"^(abstract|summary|preface|foreword|introduction|contents|table of contents|"
                            r"acknowledge?ments?|references|bibliography|appendix|index|glossary|dedication|"
                            r"prologue|epilogue|conclusions?)\b", re.I)
+_CHAPTER_LABEL = re.compile(
+    r"^(chapter|part|appendix|teil|chapitre|capítulo|capitolo)\s+(\d+|[IVXLC]+|[A-Z])$", re.I)
 CODE_ISH_RE = re.compile(r"^(?:[\w.+-]+@[\w.-]+\.\w+|https?://\S+|[\w.-]+(?:/[\w.-]+)+\.?)$")
 SOLID_BULLETS = set("•●▪■◦○‣∙►▸◆◇□☐✓✔➢➤")
 
@@ -593,6 +595,13 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
                 mark(b, levels[k])
     if not used_toc:
         _numbered_section_fallback(blocks)
+
+    # promote large-font "Chapter N" / "Appendix A" labels to headings
+    for b in blocks:
+        if b.kind == "para" and b.lines and _CHAPTER_LABEL.match(b.text.strip()):
+            avg = sum(l.size for l in b.lines) / len(b.lines)
+            if avg >= body * 1.5:
+                mark(b, 1)
 
     # synthetic headings from outline entries whose text could not be located
     for pno, lvl, title, dy in sorted(synth, key=lambda s: (s[0], s[3] or 0), reverse=True):
