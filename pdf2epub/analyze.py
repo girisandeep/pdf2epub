@@ -16,7 +16,7 @@ PAGE_NUM_RE = re.compile(r"^\s*(page\s+)?[-–—\s]*(\d{1,5}|[ivxlc]{1,7})[-–
 TOC_LINE_RE = re.compile(r"^(?P<t>.*?\S)\s*(?:\.[\s.]{2,}|·{2,}|…+|\s{2,})\s*(?P<n>\d{1,4}|[ivxlc]{1,6})\s*$", re.I)
 INDEX_ENTRY_RE = re.compile(r"^(.{2,50}?)\s+(\d{1,4}(?:[,–-]\s*\d{1,4})*)$")
 FN_SYMBOLS = "*†‡§¶∗⋆★"
-FN_MARK_RE = re.compile(rf"^\s*(\d{{1,3}}|[{FN_SYMBOLS}])(?=[\s.)\]]|$)")
+FN_MARK_RE = re.compile(rf"^\s*(\d{{1,3}}|[{FN_SYMBOLS}])(?=[\s)\]]|\.\D|\.$|$)")
 FN_SUP_RE = re.compile(rf"^(\d{{1,3}}|[{FN_SYMBOLS}])$")
 
 

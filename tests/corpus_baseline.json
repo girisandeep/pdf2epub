@@ -3,18 +3,18 @@
   "chapters": 8,
   "dup": 0,
   "eq": 61,
-  "footnotes": 3,
-  "frag_pct": 14.8,
-  "headings": 22,
+  "footnotes": 2,
+  "frag_pct": 14.2,
+  "headings": 23,
   "images": 64,
   "lists": 0,
   "mathjunk": 7,
   "mathml": 0,
   "pages": 15,
-  "paras": 128,
+  "paras": 127,
   "precision": 0.9398,
   "recall": 0.8754,
-  "secs": 4.5,
+  "secs": 4.8,
   "tables": 0,
   "valid": true
  },
@@ -33,7 +33,7 @@
   "paras": 120,
   "precision": 0.9823,
   "recall": 0.9411,
-  "secs": 4.5,
+  "secs": 4.9,
   "tables": 4,
   "valid": true
  },
@@ -52,7 +52,7 @@
   "paras": 227,
   "precision": 0.9874,
   "recall": 0.9629,
-  "secs": 5.1,
+  "secs": 5.3,
   "tables": 6,
   "valid": true
  },
@@ -71,7 +71,7 @@
   "paras": 446,
   "precision": 0.998,
   "recall": 0.9965,
-  "secs": 31.4,
+  "secs": 32.1,
   "tables": 48,
   "valid": true
  },
@@ -90,7 +90,7 @@
   "paras": 811,
   "precision": 0.9995,
   "recall": 0.9914,
-  "secs": 12.7,
+  "secs": 12.2,
   "tables": 4,
   "valid": true
  },
@@ -109,7 +109,7 @@
   "paras": 164,
   "precision": 0.9946,
   "recall": 0.9803,
-  "secs": 6.4,
+  "secs": 6.1,
   "tables": 15,
   "valid": true
  },
@@ -128,7 +128,7 @@
   "paras": 2395,
   "precision": 0.9989,
   "recall": 0.9868,
-  "secs": 32.5,
+  "secs": 33.2,
   "tables": 17,
   "valid": true
  },
@@ -166,7 +166,7 @@
   "paras": 206,
   "precision": 0.9961,
   "recall": 0.9906,
-  "secs": 5.8,
+  "secs": 5.6,
   "tables": 0,
   "valid": true
  },
@@ -185,7 +185,7 @@
   "paras": 517,
   "precision": 0.9981,
   "recall": 0.9885,
-  "secs": 11.0,
+  "secs": 11.4,
   "tables": 2,
   "valid": true
  }
