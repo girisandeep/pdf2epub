@@ -557,8 +557,10 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
                     lvl = key_levels[k].most_common(1)[0][0]
                     big = k[0] >= body * 1.15
                     if (big and n >= 1) or n >= 3:
-                        if k[0] <= body * 1.05 and (b.text.rstrip().endswith(".") or CAPTION_RE.match(b.text)):
-                            continue
+                        if k[0] <= body * 1.05:
+                            ts = b.text.strip()
+                            if ts.endswith(".") or CAPTION_RE.match(ts) or ts[:1].islower():
+                                continue
                         mark(b, lvl)
     else:
         cands = [b for b in blocks if _candidate(b)]
