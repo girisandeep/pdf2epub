@@ -961,20 +961,29 @@ def detect_index(blocks: list[Block]) -> list[Block]:
     return out
 
 
+_TABLE_CAPTION_RE = re.compile(r"^\s*(?:table|tab\.)\s", re.I)
+_FIG_CAPTION_RE = re.compile(r"^\s*(?:fig(?:ure)?s?\.?|chart|diagram|photo|plate|scheme)\s", re.I)
+
+
 def attach_captions(blocks: list[Block], body_size: float = 0) -> list[Block]:
     drop: set[int] = set()
     for i, b in enumerate(blocks):
         if b.kind not in ("image", "table") or (b.image is not None and b.image.kind == "equation"):
             continue
         if b.kind == "image":
-            candidates = [i + d for d in (1, 2, 3, -1, -2, -3)]
+            candidates = [i + d for d in (1, 2, 3, 4, 5, -1, -2, -3, -4, -5)]
         else:
-            candidates = [i + d for d in (-1, -2, -3, 1, 2, 3)]
+            candidates = [i + d for d in (-1, -2, -3, -4, -5, 1, 2, 3, 4, 5)]
         for j in candidates:
             if 0 <= j < len(blocks) and j not in drop and blocks[j].kind == "para" \
                     and (CAPTION_RE.match(blocks[j].text) or blocks[j].ml_label == "caption") \
                     and len(blocks[j].lines) <= 14 \
                     and len(blocks[j].text) <= 1400 and blocks[j].page == b.page:
+                ct = blocks[j].text
+                if b.kind == "table" and _FIG_CAPTION_RE.match(ct):
+                    continue
+                if b.kind == "image" and _TABLE_CAPTION_RE.match(ct):
+                    continue
                 b.caption = blocks[j].lines
                 drop.add(j)
                 break
