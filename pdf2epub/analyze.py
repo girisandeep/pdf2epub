@@ -1133,26 +1133,19 @@ def detect_algorithms(blocks: list[Block]) -> list[Block]:
 
 # ------------------------------------------------------------------ bibliography
 
-_BIB_HEADING = re.compile(r"^(references|bibliography|works cited|cited literature|literaturverzeichnis|endnotes)$", re.I)
+_BIB_HEADING = re.compile(r"^(references|bibliography|works cited|cited literature|literaturverzeichnis|endnotes|notes)$", re.I)
 _BIB_MARKER = re.compile(r"^\s*\[(\d+)\]\s*")
 _BIB_ALPHA_MARKER = re.compile(r"^\s*\[([A-Z][A-Za-z+\d]{1,20})\]\s*")
 _BIB_DOT_MARKER = re.compile(r"^\s*(\d{1,4})\.\s+")
 
 
-def format_bibliography(blocks: list[Block]) -> list[Block]:
-    """Detect [N]-style bibliography entries after a 'References' heading and format as a list."""
-    # Find the references heading
-    ref_idx = None
-    for i, b in enumerate(blocks):
-        if b.kind == "heading" and _BIB_HEADING.match(b.text.strip()):
-            ref_idx = i
-            break
-    if ref_idx is None:
-        return blocks
-
-    # Detect marker style: [N] numeric, [ABC+YY] alphabetic, or N. dot-numeric
+def _format_bib_section(blocks: list[Block], ref_idx: int, section_id: int) -> bool:
+    """Try to format a single bibliography section starting at ref_idx. Returns True if modified."""
+    n = len(blocks)
     numeric_count, alpha_count, dot_count = 0, 0, 0
-    for i in range(ref_idx + 1, min(ref_idx + 20, len(blocks))):
+    for i in range(ref_idx + 1, min(ref_idx + 20, n)):
+        if blocks[i].kind == "heading":
+            break
         if blocks[i].kind != "para":
             continue
         if _BIB_MARKER.match(blocks[i].text):
@@ -1163,7 +1156,7 @@ def format_bibliography(blocks: list[Block]) -> list[Block]:
             dot_count += 1
     best = max(numeric_count, alpha_count, dot_count)
     if best == 0:
-        return blocks
+        return False
     if numeric_count >= best:
         marker_re = _BIB_MARKER
     elif alpha_count >= best:
@@ -1172,11 +1165,9 @@ def format_bibliography(blocks: list[Block]) -> list[Block]:
         marker_re = _BIB_DOT_MARKER
     is_numeric = marker_re is not _BIB_ALPHA_MARKER
 
-    # Collect marked paragraphs after the heading.  Tolerate non-matching paragraphs
-    # (continuation lines mis-merged with the next entry) and small gaps in numbering.
-    bib_entries: list[int] = []       # indices of matching paragraphs
+    bib_entries: list[int] = []
     last_num = 0
-    for i in range(ref_idx + 1, len(blocks)):
+    for i in range(ref_idx + 1, n):
         b = blocks[i]
         if b.kind == "heading":
             break
@@ -1186,40 +1177,52 @@ def format_bibliography(blocks: list[Block]) -> list[Block]:
         if m:
             if is_numeric:
                 num = int(m.group(1))
-                if num >= last_num:          # allow gaps (mis-merged entries)
+                if num >= last_num:
                     bib_entries.append(i)
                     last_num = num
             else:
                 bib_entries.append(i)
 
     if len(bib_entries) < 3:
-        return blocks
+        return False
 
     bib_set = set(bib_entries)
-    bib_start = bib_entries[0]
-    bib_end = bib_entries[-1] + 1
-
-    # Convert bibliography paragraphs to list items
-    out = blocks[:bib_start]
-    for i in range(bib_start, bib_end):
+    for i in bib_entries:
         b = blocks[i]
-        if i not in bib_set:
-            # Non-matching paragraph between bib entries — append to previous item
-            if out and out[-1].kind == "li":
-                out[-1].lines.extend(b.lines)
-            else:
-                out.append(b)
-            continue
         m = marker_re.match(b.text)
         if not m:
-            out.append(b)
             continue
-        # Keep the [N] or [KEY] marker in the text — the list just groups them visually
         b.kind = "li"
-        b.ordered = False        # unordered: the [N] marker stays inline
+        b.ordered = False
         b.number = None
         b.level = 1
-        b.anchor = f"bib-{m.group(1)}"
-        out.append(b)
-    out.extend(blocks[bib_end:])
-    return out
+        b.anchor = f"bib{section_id}-{m.group(1)}"
+
+    bib_start, bib_end = bib_entries[0], bib_entries[-1] + 1
+    for i in range(bib_start, bib_end):
+        b = blocks[i]
+        if i in bib_set or b.kind != "para":
+            continue
+        prev_li = None
+        for j in range(i - 1, bib_start - 1, -1):
+            if blocks[j].kind == "li":
+                prev_li = blocks[j]
+                break
+        if prev_li is not None:
+            prev_li.lines.extend(b.lines)
+            b.kind = "_drop"
+    return True
+
+
+def format_bibliography(blocks: list[Block]) -> list[Block]:
+    """Detect [N]-style bibliography entries after 'References' headings and format as lists."""
+    modified = False
+    section_id = 0
+    for i, b in enumerate(blocks):
+        if b.kind == "heading" and _BIB_HEADING.match(b.text.strip()):
+            if _format_bib_section(blocks, i, section_id):
+                modified = True
+                section_id += 1
+    if not modified:
+        return blocks
+    return [b for b in blocks if b.kind != "_drop"]
