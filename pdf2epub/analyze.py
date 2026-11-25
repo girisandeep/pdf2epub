@@ -906,6 +906,7 @@ def attach_captions(blocks: list[Block], body_size: float = 0) -> list[Block]:
     if body_size > 0:
         _attach_captions_by_size(blocks, drop, body_size)
     _drop_figure_labels(blocks, drop)
+    _drop_table_annotations(blocks, drop, body_size)
     return [b for k, b in enumerate(blocks) if k not in drop]
 
 
@@ -976,6 +977,29 @@ def _drop_figure_labels(blocks: list[Block], drop: set[int]) -> None:
                 j += d
             if len(run) >= 2:
                 drop.update(run)
+
+
+def _drop_table_annotations(blocks: list[Block], drop: set[int], body_size: float) -> None:
+    """Drop short, small-font paragraphs adjacent to tables (escaped table content)."""
+    if body_size <= 0:
+        return
+    table_pages: dict[int, list[int]] = {}
+    for i, b in enumerate(blocks):
+        if b.kind == "table" and i not in drop:
+            table_pages.setdefault(b.page, []).append(i)
+    threshold = body_size * 0.78
+    for i, b in enumerate(blocks):
+        if i in drop or b.kind != "para" or b.page not in table_pages:
+            continue
+        t = b.text.strip()
+        if len(t) >= 40 or t.rstrip().endswith(TERMINAL):
+            continue
+        avg = _avg_span_size(b)
+        if avg >= threshold:
+            continue
+        near = any(abs(i - ti) <= 5 for ti in table_pages[b.page])
+        if near:
+            drop.add(i)
 
 
 def detect_title(blocks: list[Block], st: DocStats) -> str | None:
