@@ -202,10 +202,9 @@ def _insert_xrefs(html: str, ctx: RenderCtx) -> str:
         if not linkable:
             out.append(text)
             continue
-        # Apply cross-reference and citation linking to this text segment
-        result = []
-        last_end = 0
-        linked: set[tuple[int, int]] = set()
+        # Collect all linkable matches, then process in position order so that
+        # an xref late in the paragraph doesn't block earlier citations.
+        candidates: list[tuple[int, int, str]] = []  # (start, end, replacement_html)
         for m in _XREF_RE.finditer(text):
             number = m.group(2) or m.group(3)
             key = _xref_key(m.group(1), number)
@@ -214,16 +213,9 @@ def _insert_xrefs(html: str, ctx: RenderCtx) -> str:
                 continue
             file, anchor = tgt
             href = f"#{anchor}" if file == ctx.current_file else f"{file}#{anchor}"
-            result.append(text[last_end:m.start()])
-            result.append(f'<a href="{href}">{m.group()}</a>')
-            last_end = m.end()
-            linked.add((m.start(), m.end()))
+            candidates.append((m.start(), m.end(), f'<a href="{href}">{m.group()}</a>'))
         for cite_re in (_CITE_RE, _CITE_ALPHA_RE):
             for m in cite_re.finditer(text):
-                if any(s <= m.start() < e for s, e in linked):
-                    continue
-                if m.start() < last_end:
-                    continue
                 keys = re.split(r"[,;]\s*", m.group(1).strip())
                 parts_c = []
                 any_linked = False
@@ -238,15 +230,8 @@ def _insert_xrefs(html: str, ctx: RenderCtx) -> str:
                     else:
                         parts_c.append(key)
                 if any_linked:
-                    result.append(text[last_end:m.start()])
-                    result.append("[" + ", ".join(parts_c) + "]")
-                    last_end = m.end()
-                    linked.add((m.start(), m.end()))
+                    candidates.append((m.start(), m.end(), "[" + ", ".join(parts_c) + "]"))
         for m in _CITE_PAREN_RE.finditer(text):
-            if any(s <= m.start() < e for s, e in linked):
-                continue
-            if m.start() < last_end:
-                continue
             parts = [p.strip() for p in m.group(1).split(";")]
             parts_out = []
             any_linked = False
@@ -266,10 +251,16 @@ def _insert_xrefs(html: str, ctx: RenderCtx) -> str:
                 else:
                     parts_out.append(part)
             if any_linked:
-                result.append(text[last_end:m.start()])
-                result.append("(" + "; ".join(parts_out) + ")")
-                last_end = m.end()
-                linked.add((m.start(), m.end()))
+                candidates.append((m.start(), m.end(), "(" + "; ".join(parts_out) + ")"))
+        candidates.sort()
+        result = []
+        last_end = 0
+        for start, end, repl in candidates:
+            if start < last_end:
+                continue
+            result.append(text[last_end:start])
+            result.append(repl)
+            last_end = end
         if result:
             result.append(text[last_end:])
             out.append("".join(result))
