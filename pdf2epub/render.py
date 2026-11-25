@@ -654,7 +654,8 @@ def _render_index(b: Block) -> str:
     for term, pages in b.entries:
         t = escape(term.rstrip(" ,;"))
         if pages:
-            items.append(f"<li>{t}, {escape(pages)}</li>")
+            p = re.sub(r"\s+", " ", pages.strip())
+            items.append(f"<li>{t}, {escape(p)}</li>")
         else:
             items.append(f"<li>{t}</li>")
     return '<ul class="index">' + "".join(items) + "</ul>"

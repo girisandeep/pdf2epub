@@ -1184,6 +1184,19 @@ def detect_toc(blocks: list[Block], c: Counters) -> list[Block]:
 
 _INDEX_HEADING = re.compile(r"^index$", re.I)
 _INDEX_LETTER_RE = re.compile(r"^[A-Z]$")
+_INDEX_PAGE_CONT = re.compile(r"^\s*\d{1,4}(?:\s*[,–-]\s*\d{1,4})*\s*,?\s*$")
+_INDEX_ENTRY_TRAIL = re.compile(r"^(.{2,50}?)\s+(\d{1,4}(?:[,–-]\s*\d{1,4})*)\s*,\s*$")
+
+
+def _index_line_texts(b: Block) -> list[str]:
+    """Extract individual line texts from a block for index processing."""
+    if b.lines and len(b.lines) > 1:
+        return [" ".join(s.text for s in ln.spans).strip() for ln in b.lines]
+    return [b.text.strip()]
+
+
+def _clean_index_name(name: str) -> str:
+    return re.sub(r"\s+", " ", name.strip().rstrip(",").strip())
 
 
 def detect_index(blocks: list[Block]) -> list[Block]:
@@ -1198,9 +1211,11 @@ def detect_index(blocks: list[Block]) -> list[Block]:
         if b.kind == "heading" and _INDEX_HEADING.match(b.text.strip()) and b.page >= cutoff_page:
             match_count = 0
             for j in range(i + 1, min(i + 15, len(blocks))):
-                t = blocks[j].text.strip()
-                if blocks[j].kind == "para" and (INDEX_ENTRY_RE.match(t) or _INDEX_LETTER_RE.match(t)):
-                    match_count += 1
+                if blocks[j].kind != "para":
+                    continue
+                for lt in _index_line_texts(blocks[j]):
+                    if INDEX_ENTRY_RE.match(lt) or _INDEX_LETTER_RE.match(lt):
+                        match_count += 1
             if match_count >= 4:
                 idx_start = i + 1
                 break
@@ -1213,24 +1228,33 @@ def detect_index(blocks: list[Block]) -> list[Block]:
     j = idx_start
     while j < len(blocks):
         b = blocks[j]
-        t = b.text.strip()
         if b.kind == "para" and b.page >= idx_page:
-            m = INDEX_ENTRY_RE.match(t)
-            if m:
-                run.append((m.group(1).strip(), m.group(2)))
-                j += 1
-                continue
-            if _INDEX_LETTER_RE.match(t):
-                j += 1
-                continue
-            if re.match(r"^\(?[Ss]ee\b", t):
-                run.append((t, ""))
-                j += 1
-                continue
-            run.append((t, ""))
+            for lt in _index_line_texts(b):
+                if not lt:
+                    continue
+                if _INDEX_PAGE_CONT.match(lt) and run:
+                    prev_name, prev_pages = run[-1]
+                    nums = re.sub(r"\s+", " ", lt.strip().rstrip(",").strip())
+                    base = prev_pages.rstrip(",").rstrip()
+                    run[-1] = (prev_name, (base + ", " + nums) if base else nums)
+                    continue
+                m = INDEX_ENTRY_RE.match(lt)
+                if m:
+                    run.append((_clean_index_name(m.group(1)), m.group(2)))
+                    continue
+                m = _INDEX_ENTRY_TRAIL.match(lt)
+                if m:
+                    run.append((_clean_index_name(m.group(1)), m.group(2)))
+                    continue
+                if _INDEX_LETTER_RE.match(lt):
+                    pass
+                elif re.match(r"^\(?[Ss]ee\b", lt):
+                    run.append((lt, ""))
+                else:
+                    run.append((lt, ""))
             j += 1
             continue
-        if b.kind == "heading" and _INDEX_HEADING.match(t):
+        if b.kind == "heading" and _INDEX_HEADING.match(b.text.strip()):
             j += 1
             continue
         if run:
