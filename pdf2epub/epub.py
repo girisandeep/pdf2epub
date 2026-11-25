@@ -23,7 +23,7 @@ figure img { max-width: 100%; height: auto; }
 div.equation.mathml { position: relative; } span.eqno { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
 div.equation { text-align: center; margin: .9em 0; } img.equation { max-width: 100%; height: auto; vertical-align: middle; }
 figcaption { font-size: .88em; font-style: italic; margin-top: .4em; text-align: center; }
-table { border-collapse: collapse; margin: 1em auto; max-width: 100%; font-size: .9em; }
+table { border-collapse: collapse; margin: 1em auto; max-width: 100%; font-size: .9em; word-break: break-word; }
 caption { font-weight: bold; margin-bottom: .4em; text-align: left; }
 th, td { border: 1px solid #999; padding: .25em .5em; vertical-align: top; }
 th { background: #eee; } td.num { text-align: right; }

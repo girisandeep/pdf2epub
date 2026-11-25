@@ -125,7 +125,10 @@ def strip_running(pages: list[PageData], c: Counters, keep: bool = False) -> Non
         top, bot = 0.12 * p.height, 0.88 * p.height
         for l in p.lines:
             if l.y1 <= top or l.y0 >= bot:
-                key = (norm_key(l.text), round(l.y0 / 6))
+                nk = norm_key(l.text)
+                if PAGE_NUM_RE.match(l.text):
+                    nk = "#"
+                key = (nk, round(l.y0 / 6))
                 if key[0]:
                     cnt[key] += 1
                     zones[p.number].append((l, key))
