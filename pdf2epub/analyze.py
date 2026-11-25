@@ -1057,11 +1057,25 @@ def detect_toc(blocks: list[Block], c: Counters) -> list[Block]:
     i = 0
     while i < len(blocks):
         run, j, skipped = [], i, 0
-        while j < len(blocks) and len(blocks[j].lines) <= 3:
+        while j < len(blocks):
             bk = blocks[j]
             if bk.kind not in ("para", "heading"):
                 break
             t = bk.text.strip()
+            if len(bk.lines) > 3 and ". . ." in t:
+                for ln in bk.lines:
+                    lt = ln.text.strip()
+                    lm = TOC_LINE_RE.match(lt)
+                    if lm:
+                        run.append((lm.group("t").strip(" .·…"), lm.group("n")))
+                    elif _DOTLEADER_RE.match(lt):
+                        run.append((_DOTLEADER_RE.match(lt).group("t").strip(" .·…"), ""))
+                    elif _SECTION_NUM_ONLY.match(lt):
+                        pass
+                j += 1
+                continue
+            if len(bk.lines) > 3:
+                break
             m = TOC_LINE_RE.match(t)
             if m:
                 title = m.group("t").strip(" .·…")
