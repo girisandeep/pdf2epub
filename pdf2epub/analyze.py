@@ -700,6 +700,13 @@ def _short_fragment(b: Block) -> bool:
 def merge_continuations(blocks: list[Block], c: Counters) -> list[Block]:
     out: list[Block] = []
     for b in blocks:
+        if b.kind == "code" and out and out[-1].kind == "para" \
+                and out[-1].text.rstrip().endswith(("https:", "http:")) \
+                and b.lines and b.lines[0].text.lstrip().startswith("//"):
+            out[-1].lines += b.lines
+            out[-1].full_last = b.full_last
+            c.merged_paragraphs += 1
+            continue
         if b.kind != "para" or b.marker is not None or not out:
             out.append(b)
             continue
