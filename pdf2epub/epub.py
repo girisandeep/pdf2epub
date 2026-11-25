@@ -31,6 +31,7 @@ th { background: #eee; } td.num { text-align: right; }
 aside.footnote { font-size: .85em; margin: 0 0 .8em 1.2em; padding-left: .6em; border-left: 2px solid #ccc; }
 aside.footnote p { margin: 0; } a.fn-back { text-decoration: none; font-weight: bold; }
 ul.toc { list-style: none; padding-left: 0; } ul.toc li { margin-bottom: .4em; }
+ul.index { list-style: none; padding-left: 0; font-size: .85em; column-count: 2; column-gap: 1.5em; } ul.index li { margin-bottom: .15em; break-inside: avoid; }
 .algorithm { background: #f8f8f0; border: 1px solid #ddd; padding: .6em .8em; margin: 0 0 1em; border-radius: 3px; }
 .algorithm pre { font-family: Georgia, "Times New Roman", serif; font-size: .95em; line-height: 1.5; background: none; padding: 0; margin: 0; border-radius: 0; }
 hr { border: none; border-top: 1px solid #999; margin: 1.5em 15%; }

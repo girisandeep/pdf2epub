@@ -1009,13 +1009,13 @@ def detect_index(blocks: list[Block]) -> list[Block]:
             j += 1
             continue
         if run:
-            out.append(Block("toc", run_page, entries=run, y0=blocks[idx_start].y0))
+            out.append(Block("index", run_page, entries=run, y0=blocks[idx_start].y0))
             run = []
         out.append(b)
         run_page = b.page
         j += 1
     if run:
-        out.append(Block("toc", run_page, entries=run, y0=blocks[idx_start].y0))
+        out.append(Block("index", run_page, entries=run, y0=blocks[idx_start].y0))
     return out
 
 

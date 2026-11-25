@@ -482,6 +482,8 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id) -> list[st
             html.append(tbl)
         elif k == "toc":
             html.append(_render_toc(b, ctx))
+        elif k == "index":
+            html.append(_render_index(b))
         i += 1
     return html
 
@@ -644,3 +646,14 @@ def _render_toc(b: Block, ctx: RenderCtx) -> str:
             label_html = f"{label_html} {escape(label)}"
         items.append(f"<li>{label_html}</li>")
     return '<ul class="toc">' + "".join(items) + "</ul>"
+
+
+def _render_index(b: Block) -> str:
+    items = []
+    for term, pages in b.entries:
+        t = escape(term.rstrip(" ,;"))
+        if pages:
+            items.append(f"<li>{t}, {escape(pages)}</li>")
+        else:
+            items.append(f"<li>{t}</li>")
+    return '<ul class="index">' + "".join(items) + "</ul>"

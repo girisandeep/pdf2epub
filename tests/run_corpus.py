@@ -69,7 +69,7 @@ def evaluate(args: tuple) -> dict:
         body.append(" ".join(doc.xpath("//x:figure[not(x:figcaption)]/x:img/@alt", namespaces=NS)))
         for p in doc.xpath("//x:p|//x:li|//x:dd|//x:dt", namespaces=NS):
             par = p.getparent()
-            if par is not None and par.get("class") == "toc":
+            if par is not None and par.get("class") in ("toc", "index"):
                 continue
             tag = p.tag.rsplit("}", 1)[-1]
             is_li = tag in ("li", "dt", "dd")
