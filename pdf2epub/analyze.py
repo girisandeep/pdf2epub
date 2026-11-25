@@ -568,6 +568,8 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
                             continue
                         if ts.endswith(("-", "­")):
                             continue
+                        if not any(c.isalpha() for c in ts):
+                            continue
                         if k[0] <= body * 1.05:
                             if ts.endswith(".") or CAPTION_RE.match(ts) or ts[:1].islower():
                                 continue
@@ -582,6 +584,8 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
             if CAPTION_RE.match(t) and size <= body * 1.1:
                 continue
             if t.rstrip().endswith(("-", "­")):
+                continue
+            if not any(c.isalpha() for c in t):
                 continue
             if size >= body * 1.12:
                 keys[(size, bold, False)].append(b)
