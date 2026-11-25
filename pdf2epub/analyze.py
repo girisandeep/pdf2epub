@@ -337,7 +337,11 @@ def segment_page(items: list, page: int, st: DocStats) -> list[Block]:
 # ---------------------------------------------------------------------- headings
 def _bkey(b: Block):
     sizes = sorted(l.size for l in b.lines)
-    return (sizes[len(sizes) // 2], all(l.bold for l in b.lines))
+    size = sizes[len(sizes) // 2]
+    if _is_caps(b):
+        max_span = max((s.size for l in b.lines for s in l.spans), default=size)
+        size = max(size, max_span)
+    return (size, all(l.bold for l in b.lines))
 
 
 def _is_caps(b: Block) -> bool:
@@ -655,8 +659,10 @@ def merge_continuations(blocks: list[Block], c: Counters) -> list[Block]:
             p = _find_last_para(out)
             if p is not None and _try_merge(p, b, c):
                 continue
-        elif prev.kind == "para" and (_short_fragment(prev) or _short_fragment(b)) \
-                and _try_merge(prev, b, c):
+        elif prev.kind == "para" and (
+                _short_fragment(prev) or _short_fragment(b)
+                or prev.text.rstrip().endswith(("-", "­"))
+            ) and _try_merge(prev, b, c):
             continue
         out.append(b)
     return out
