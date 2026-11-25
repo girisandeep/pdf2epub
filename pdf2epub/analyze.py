@@ -627,8 +627,10 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
                             continue
                         if ts[:1].islower():
                             continue
+                        if CAPTION_RE.match(ts):
+                            continue
                         if k[0] <= body * 1.05:
-                            if ts.endswith(".") or CAPTION_RE.match(ts):
+                            if ts.endswith("."):
                                 continue
                         mark(b, lvl)
     else:
@@ -638,7 +640,7 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
         for b in cands:
             size, bold = _bkey(b)
             t = b.text
-            if CAPTION_RE.match(t) and size <= body * 1.1:
+            if CAPTION_RE.match(t) and size <= body * 1.25:
                 continue
             if t.rstrip().endswith(("-", "­")):
                 continue
