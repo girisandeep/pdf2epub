@@ -67,6 +67,9 @@ def evaluate(args: tuple) -> dict:
         body.append(" ".join(doc.xpath("//x:body//text()", namespaces=NS)))
         body.append(" ".join(doc.xpath("//x:img[@class='equation']/@alt", namespaces=NS)))   # equation text kept as alt
         for p in doc.xpath("//x:p|//x:li", namespaces=NS):
+            par = p.getparent()
+            if par is not None and par.get("class") == "toc":
+                continue
             paras.append(("".join(p.itertext()).strip(), len(p.xpath(".//x:sub|.//x:sup", namespaces=NS))))
         stats["mathml"] += len(doc.xpath("//*[local-name()='math']"))
         stats["eq"] += len(doc.xpath("//x:img[@class='equation']", namespaces=NS))

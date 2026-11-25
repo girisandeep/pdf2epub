@@ -834,14 +834,15 @@ def detect_index(blocks: list[Block]) -> list[Block]:
                 break
     if idx_start is None:
         return blocks
+    idx_page = blocks[idx_start].page if idx_start < len(blocks) else last_page
     out = blocks[:idx_start]
     run: list[tuple[str, str]] = []
-    run_page = blocks[idx_start].page if idx_start < len(blocks) else 0
+    run_page = idx_page
     j = idx_start
     while j < len(blocks):
         b = blocks[j]
         t = b.text.strip()
-        if b.kind == "para" and len(b.lines) <= 3:
+        if b.kind == "para" and b.page >= idx_page:
             m = INDEX_ENTRY_RE.match(t)
             if m:
                 run.append((m.group(1).strip(), m.group(2)))
@@ -854,6 +855,12 @@ def detect_index(blocks: list[Block]) -> list[Block]:
                 run.append((t, ""))
                 j += 1
                 continue
+            run.append((t, ""))
+            j += 1
+            continue
+        if b.kind == "heading" and _INDEX_HEADING.match(t):
+            j += 1
+            continue
         if run:
             out.append(Block("toc", run_page, entries=run, y0=blocks[idx_start].y0))
             run = []
