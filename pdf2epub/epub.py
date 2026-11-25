@@ -37,6 +37,16 @@ ul.index { list-style: none; padding-left: 0; font-size: .85em; column-count: 2;
 hr { border: none; border-top: 1px solid #999; margin: 1.5em 15%; }
 sup, sub { line-height: 0; }
 .cover { text-align: center; margin: 0; padding: 0; } .cover img { max-width: 100%; max-height: 100%; }
+@media (prefers-color-scheme: dark) {
+  body { color: #e0e0e0; background: #1a1a1a; }
+  pre { background: #2a2a2a; }
+  th { background: #333; } th, td { border-color: #555; }
+  aside.footnote { border-left-color: #555; }
+  .algorithm { background: #262620; border-color: #444; }
+  hr { border-top-color: #555; }
+  a { color: #6cb4ee; }
+  img { opacity: .92; }
+}
 @media (max-width: 600px) {
   body { margin: 3%; }
   table { font-size: .8em; }
