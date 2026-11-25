@@ -106,6 +106,24 @@ _SECTION_START = re.compile(
 _META_AUTHOR_BAD = re.compile(r"[:\\{}]|^\d|^[A-Z]{2,}(:[A-Z]{2,})+$")
 
 
+def _parse_pdf_date(s: str) -> Optional[str]:
+    """Parse a PDF date string (D:YYYYMMDDHHmmSS...) into ISO 8601 date."""
+    if not s:
+        return None
+    s = s.strip()
+    if s.startswith("D:"):
+        s = s[2:]
+    m = re.match(r"(\d{4})(\d{2})?(\d{2})?", s)
+    if not m:
+        return None
+    y = m.group(1)
+    mo = m.group(2) or "01"
+    d = m.group(3) or "01"
+    if not (1900 <= int(y) <= 2100 and 1 <= int(mo) <= 12 and 1 <= int(d) <= 31):
+        return None
+    return f"{y}-{mo}-{d}"
+
+
 def _valid_meta_author(s: str) -> bool:
     if not s or len(s) < 3:
         return False
@@ -499,6 +517,8 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
     if raw_author and not _valid_meta_author(raw_author):
         raw_author = ""
     author = opts.author or raw_author or None
+    description = (meta.get("subject") or "").strip() or None
+    date = _parse_pdf_date(meta.get("creationDate"))
 
     # ---- 3. statistics & cleanup --------------------------------------------
     stats = A.compute_stats(pages)
@@ -580,7 +600,9 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
     # ---- 7. chapters, ids, images ----------------------------------------------
     ctx = RenderCtx(stats, footnotes=fn_defs)
     chapters, split = _split_chapters(blocks, opts, ctx)
-    book = EpubBook(title=title, language=lang, author=author, cover=cover_bytes)
+    book = EpubBook(title=title, language=lang, author=author, cover=cover_bytes,
+                    description=description, date=date,
+                    source=os.path.basename(src))
 
     n_img = 0
     for b in blocks:

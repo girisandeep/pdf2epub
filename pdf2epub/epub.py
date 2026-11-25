@@ -79,6 +79,9 @@ class EpubBook:
     nav: list[NavEntry] = field(default_factory=list)
     images: dict[str, tuple[bytes, str]] = field(default_factory=dict)   # href -> (data, mime)
     cover: bytes | None = None
+    description: str | None = None
+    date: str | None = None                    # ISO 8601 date, e.g. "2024-01-15"
+    source: str | None = None                  # original PDF filename
 
 
 def xhtml(title: str, body: str, lang: str, css: str = "style.css", body_class: str = "") -> str:
@@ -145,11 +148,15 @@ def write_epub(book: EpubBook, path: str) -> None:
         manifest.append(f'<item id="i{j}" href="{href}" media-type="{mime}"/>')
 
     creator = f"<dc:creator>{escape(book.author)}</dc:creator>" if book.author else ""
+    desc = f"<dc:description>{escape(book.description)}</dc:description>" if book.description else ""
+    date = f"<dc:date>{escape(book.date)}</dc:date>" if book.date else ""
+    source = f"<dc:source>{escape(book.source)}</dc:source>" if book.source else ""
     opf = ('<?xml version="1.0" encoding="utf-8"?>\n'
            '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid" '
            f'xml:lang="{lang}">\n<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">'
            f'<dc:identifier id="bookid">{escape(book.identifier)}</dc:identifier>'
            f'<dc:title>{escape(book.title)}</dc:title>{creator}<dc:language>{lang}</dc:language>'
+           f'{desc}{date}{source}'
            f'<meta property="dcterms:modified">{now}</meta>'
            '<meta property="schema:accessMode">textual</meta>'
            '<meta property="schema:accessMode">visual</meta>'
