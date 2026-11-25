@@ -902,6 +902,7 @@ def attach_captions(blocks: list[Block], body_size: float = 0) -> list[Block]:
 
     if body_size > 0:
         _attach_captions_by_size(blocks, drop, body_size)
+    _drop_figure_labels(blocks, drop)
     return [b for k, b in enumerate(blocks) if k not in drop]
 
 
@@ -943,6 +944,35 @@ def _attach_captions_by_size(blocks: list[Block], drop: set[int], body_size: flo
         if len(merged) >= 15 and len(merged) <= 500 and any(ch.isalpha() for ch in merged):
             b.caption = cap_lines
             drop.update(cap_idxs)
+
+
+_FIGURE_LABEL_RE = re.compile(r"^[\d.,\s%]+$|^[A-Za-z]$")
+
+
+def _drop_figure_labels(blocks: list[Block], drop: set[int]) -> None:
+    for i, b in enumerate(blocks):
+        if b.kind != "image" or i in drop:
+            continue
+        if b.image is not None and b.image.kind == "equation":
+            continue
+        if b.image is not None and min(b.image.width, b.image.height) < 50:
+            continue
+        for d in (1, -1):
+            run: list[int] = []
+            j = i + d
+            while 0 <= j < len(blocks) and j not in drop:
+                c = blocks[j]
+                if c.page != b.page or c.kind != "para":
+                    break
+                t = c.text.strip()
+                if len(t) > 25:
+                    break
+                if not _FIGURE_LABEL_RE.match(t) and len(t.split()) >= 3 and t.rstrip().endswith(TERMINAL):
+                    break
+                run.append(j)
+                j += d
+            if len(run) >= 2:
+                drop.update(run)
 
 
 def detect_title(blocks: list[Block], st: DocStats) -> str | None:
