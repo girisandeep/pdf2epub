@@ -140,15 +140,31 @@ def strip_running(pages: list[PageData], c: Counters, keep: bool = False) -> Non
                     cnt[key] += 1
                     zones[p.number].append((l, key))
     n = len(pages)
+    ybin_caught: Counter = Counter()
     for p in pages:
         drop = set()
         for l, key in zones.get(p.number, []):
             pn = bool(PAGE_NUM_RE.match(l.text))
             if cnt[key] >= 3 or (pn and (n <= 3 or cnt[key] >= 2)):
                 drop.add(id(l))
+                ybin_caught[key[1]] += 1
         if drop:
             c.running_removed += len(drop)
             p.lines = [l for l in p.lines if id(l) not in drop]
+    # position-based: if a y-bin has confirmed headers on many pages,
+    # also strip remaining short text at the same position
+    hot_ybins = {yb for yb, c2 in ybin_caught.items() if c2 >= max(n * 0.3, 4)}
+    if hot_ybins:
+        for p in pages:
+            drop = set()
+            top, bot = 0.12 * p.height, 0.88 * p.height
+            for l in p.lines:
+                if (l.y1 <= top or l.y0 >= bot) and round(l.y0 / 6) in hot_ybins \
+                        and len(l.text.strip()) < 80:
+                    drop.add(id(l))
+            if drop:
+                c.running_removed += len(drop)
+                p.lines = [l for l in p.lines if id(l) not in drop]
     # repeating small images (logos, rules) in margins or on many pages
     img_pages: dict[str, set[int]] = defaultdict(set)
     for p in pages:
