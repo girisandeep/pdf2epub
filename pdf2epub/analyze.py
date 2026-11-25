@@ -14,6 +14,7 @@ CAPTION_RE = re.compile(r"^\s*(fig(?:ure)?s?\.?|table|tab\.|chart|diagram|photo|
                         r"\s*[\dIVXA-Z]+[.:)\s-]", re.I)
 PAGE_NUM_RE = re.compile(r"^\s*(page\s+)?[-–—\s]*(\d{1,5}|[ivxlc]{1,7})[-–—\s]*(of\s+\d+|/\s*\d+)?\s*$", re.I)
 TOC_LINE_RE = re.compile(r"^(?P<t>.*?\S)\s*(?:\.[\s.]{2,}|·{2,}|…+|\s{2,})\s*(?P<n>\d{1,4}|[ivxlc]{1,6})\s*$", re.I)
+INDEX_ENTRY_RE = re.compile(r"^(.{2,50}?)\s+(\d{1,4}(?:[,–-]\s*\d{1,4})*)$")
 FN_SYMBOLS = "*†‡§¶∗⋆★"
 FN_MARK_RE = re.compile(rf"^\s*(\d{{1,3}}|[{FN_SYMBOLS}])(?=[\s.)\]]|$)")
 FN_SUP_RE = re.compile(rf"^(\d{{1,3}}|[{FN_SYMBOLS}])$")
@@ -806,6 +807,61 @@ def detect_toc(blocks: list[Block], c: Counters) -> list[Block]:
         else:
             out.append(blocks[i])
             i += 1
+    return out
+
+
+_INDEX_HEADING = re.compile(r"^index$", re.I)
+_INDEX_LETTER_RE = re.compile(r"^[A-Z]$")
+
+
+def detect_index(blocks: list[Block]) -> list[Block]:
+    """Merge back-of-book index entries into compact list blocks."""
+    if len(blocks) < 20:
+        return blocks
+    last_page = max(b.page for b in blocks)
+    cutoff_page = last_page - max(last_page // 5, 3)
+    idx_start = None
+    for i in range(len(blocks) - 1, -1, -1):
+        b = blocks[i]
+        if b.kind == "heading" and _INDEX_HEADING.match(b.text.strip()) and b.page >= cutoff_page:
+            match_count = 0
+            for j in range(i + 1, min(i + 15, len(blocks))):
+                t = blocks[j].text.strip()
+                if blocks[j].kind == "para" and (INDEX_ENTRY_RE.match(t) or _INDEX_LETTER_RE.match(t)):
+                    match_count += 1
+            if match_count >= 4:
+                idx_start = i + 1
+                break
+    if idx_start is None:
+        return blocks
+    out = blocks[:idx_start]
+    run: list[tuple[str, str]] = []
+    run_page = blocks[idx_start].page if idx_start < len(blocks) else 0
+    j = idx_start
+    while j < len(blocks):
+        b = blocks[j]
+        t = b.text.strip()
+        if b.kind == "para" and len(b.lines) <= 3:
+            m = INDEX_ENTRY_RE.match(t)
+            if m:
+                run.append((m.group(1).strip(), m.group(2)))
+                j += 1
+                continue
+            if _INDEX_LETTER_RE.match(t):
+                j += 1
+                continue
+            if re.match(r"^\(?[Ss]ee\b", t):
+                run.append((t, ""))
+                j += 1
+                continue
+        if run:
+            out.append(Block("toc", run_page, entries=run, y0=blocks[idx_start].y0))
+            run = []
+        out.append(b)
+        run_page = b.page
+        j += 1
+    if run:
+        out.append(Block("toc", run_page, entries=run, y0=blocks[idx_start].y0))
     return out
 
 

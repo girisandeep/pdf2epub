@@ -561,5 +561,7 @@ def _render_toc(b: Block, ctx: RenderCtx) -> str:
             f, hid = tgt
             href = (hid and f"{f}#{hid}") if f != ctx.current_file else f"#{hid}"
             label_html = f'<a href="{href}">{label_html}</a>'
+        elif label:
+            label_html = f"{label_html} {escape(label)}"
         items.append(f"<li>{label_html}</li>")
     return '<ul class="toc">' + "".join(items) + "</ul>"
