@@ -357,6 +357,7 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
     blocks = A.merge_title_page(blocks)
     blocks = A.format_bibliography(blocks)
     blocks = A.build_lists(blocks, counters)
+    blocks = A.detect_naked_lists(blocks, counters)
     blocks = A.detect_toc(blocks, counters)
     blocks = A.attach_captions(blocks, body_size=stats.body_size)
     blocks = A.merge_continuations(blocks, counters)

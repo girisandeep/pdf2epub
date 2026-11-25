@@ -15,6 +15,10 @@ CAPTION_RE = re.compile(r"^\s*(fig(?:ure)?s?\.?|table|tab\.|chart|diagram|photo|
 PAGE_NUM_RE = re.compile(r"^\s*(page\s+)?[-–—\s]*(\d{1,5}|[ivxlc]{1,7})[-–—\s]*(of\s+\d+|/\s*\d+)?\s*$", re.I)
 TOC_LINE_RE = re.compile(r"^(?P<t>.*?\S)\s*(?:\.[\s.]{2,}|·{2,}|…+|\s{2,})\s*(?P<n>\d{1,4}|[ivxlc]{1,6})\s*$", re.I)
 INDEX_ENTRY_RE = re.compile(r"^(.{2,50}?)\s+(\d{1,4}(?:[,–-]\s*\d{1,4})*)$")
+_NAKED_LIST_HEADING = re.compile(
+    r"^(see also|related|external links|further reading|related articles"
+    r"|related pages|related topics|voir aussi|siehe auch|véase también"
+    r"|voci correlate|enlaces externos|liens externes|weblinks)$", re.I)
 FN_SYMBOLS = "*†‡§¶∗⋆★"
 FN_MARK_RE = re.compile(rf"^\s*(\d{{1,3}}|[{FN_SYMBOLS}])(?=[\s)\]]|\.\D|\.$|$)")
 FN_SUP_RE = re.compile(rf"^(\d{{1,3}}|[{FN_SYMBOLS}])$")
@@ -780,6 +784,31 @@ def build_lists(blocks: list[Block], c: Counters) -> list[Block]:
                     x.number = x.marker[2]
                     _strip_marker(x)
             i = j + 1
+        else:
+            i += 1
+    return blocks
+
+
+def detect_naked_lists(blocks: list[Block], c: Counters) -> list[Block]:
+    """Convert runs of short single-line paragraphs after 'See also'-style headings to list items."""
+    i, n = 0, len(blocks)
+    while i < n:
+        b = blocks[i]
+        if b.kind == "heading" and _NAKED_LIST_HEADING.match(b.text.strip()):
+            j = i + 1
+            while j < n and blocks[j].kind == "para" and len(blocks[j].lines) <= 2:
+                t = blocks[j].text.strip()
+                if not t or len(t) > 120:
+                    break
+                j += 1
+            run_len = j - (i + 1)
+            if run_len >= 3:
+                c.lists += 1
+                for k in range(i + 1, j):
+                    blocks[k].kind = "li"
+                    blocks[k].level = 0
+                    blocks[k].ordered = False
+            i = j
         else:
             i += 1
     return blocks

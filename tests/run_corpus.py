@@ -70,14 +70,16 @@ def evaluate(args: tuple) -> dict:
             par = p.getparent()
             if par is not None and par.get("class") == "toc":
                 continue
-            paras.append(("".join(p.itertext()).strip(), len(p.xpath(".//x:sub|.//x:sup", namespaces=NS))))
+            is_li = p.tag.endswith("}li") or p.tag == "li"
+            paras.append(("".join(p.itertext()).strip(), len(p.xpath(".//x:sub|.//x:sup", namespaces=NS)), is_li))
         stats["mathml"] += len(doc.xpath("//*[local-name()='math']"))
         stats["eq"] += len(doc.xpath("//x:img[@class='equation']", namespaces=NS))
     ref = toks(" ".join(p.get_text() for p in pymupdf.open(pdf)))
     got = toks(" ".join(body))
     common = sum((ref & got).values())
-    texts = [t for t, _ in paras if t]
-    frag = sum(1 for t in texts if len(t) < 40 and not t.endswith((".", "?", "!", ":", '"', "”", "]", ")")))
+    texts = [t for t, _, _ in paras if t]
+    frag = sum(1 for t, _, li in paras if t and not li and len(t) < 40
+               and not t.endswith((".", "?", "!", ":", '"', "”", "]", ")")))
     dup = sum(1 for a, b in zip(texts, texts[1:]) if a == b and len(a) >= 60)
     return {
         "pages": rep.pages, "secs": round(secs, 1), "chapters": rep.chapters, "headings": rep.headings,
@@ -86,7 +88,7 @@ def evaluate(args: tuple) -> dict:
         "precision": round(common / max(sum(got.values()), 1), 4),
         "valid": check(out) == [],
         "frag_pct": round(100 * frag / max(len(texts), 1), 1),
-        "mathjunk": sum(1 for t, s in paras if s >= 3 and len(t) < 120 and len(t) / s < 15),
+        "mathjunk": sum(1 for t, s, _ in paras if s >= 3 and len(t) < 120 and len(t) / s < 15),
         "dup": dup, "eq": stats["eq"], "mathml": stats["mathml"], "paras": len(texts),
     }
 
