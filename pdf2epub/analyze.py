@@ -33,6 +33,7 @@ def footnote_marker(l: Line) -> str | None:
     m = FN_MARK_RE.match(l.text)
     return m.group(1) if m else None
 SECTION_WORDS = re.compile(r"^(abstract|summary|preface|foreword|introduction|contents|table of contents|"
+                           r"inhaltsverzeichnis|table des matières|índice|sommario|"
                            r"acknowledge?ments?|references|bibliography|appendix|index|glossary|dedication|"
                            r"prologue|epilogue|conclusions?)\b", re.I)
 _CHAPTER_LABEL = re.compile(
@@ -973,6 +974,50 @@ def _strip_marker(b: Block) -> None:
         spans.append(replace(s, text=s.text[left:]))
         left = 0
     first.spans = spans
+
+
+_CONTENTS_RE = re.compile(
+    r"^(contents|table of contents|inhaltsverzeichnis|table des matières|índice|sommario)$", re.I)
+
+
+def _detect_heading_toc(blocks: list[Block]) -> list[Block]:
+    """Convert heading-only inline TOCs (e.g. Wikipedia) into toc blocks.
+
+    When a "Contents" heading is followed by numbered headings whose titles
+    also appear later in the document, collapse the run into a toc block.
+    """
+    contents_idx = None
+    for i, b in enumerate(blocks):
+        if b.kind == "heading" and _CONTENTS_RE.match(b.text.strip()):
+            contents_idx = i
+            break
+    if contents_idx is None:
+        return blocks
+    run_start = contents_idx + 1
+    run_end = run_start
+    for j in range(run_start, len(blocks)):
+        if blocks[j].kind != "heading":
+            break
+        run_end = j + 1
+    run_len = run_end - run_start
+    if run_len < 3:
+        return blocks
+    later_titles = set()
+    for b in blocks[run_end:]:
+        if b.kind == "heading":
+            later_titles.add(re.sub(r"^\d+(\.\d+)*\s+", "", b.text.strip()).lower())
+    matched = 0
+    entries = []
+    for j in range(run_start, run_end):
+        t = blocks[j].text.strip()
+        stripped = re.sub(r"^\d+(\.\d+)*\s+", "", t).lower()
+        if stripped in later_titles:
+            matched += 1
+        entries.append((t, ""))
+    if matched < run_len * 0.5:
+        return blocks
+    toc_block = Block("toc", blocks[run_start].page, entries=entries, y0=blocks[run_start].y0)
+    return blocks[:contents_idx + 1] + [toc_block] + blocks[run_end:]
 
 
 _SECTION_NUM_ONLY = re.compile(r"^\s*\d+(\.\d+)*\s*$")
