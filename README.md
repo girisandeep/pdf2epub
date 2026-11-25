@@ -1,11 +1,12 @@
 # pdf2epub
 
-Layout-aware PDF → EPUB 3 converter. It reconstructs *structure* (chapters, headings, paragraphs,
+Layout-aware PDF → EPUB 3 / HTML converter. It reconstructs *structure* (chapters, headings, paragraphs,
 lists, tables, footnotes, figures) instead of dumping text page by page.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e '.[ocr,dev]'
-.venv/bin/pdf2epub paper.pdf -o paper.epub            # single file
+.venv/bin/pdf2epub paper.pdf -o paper.epub            # single file → EPUB
+.venv/bin/pdf2epub paper.pdf -o paper.html            # single file → HTML
 .venv/bin/pdf2epub books/ -o out/ --report report.json # batch a folder
 .venv/bin/pdf2epub scan.pdf --ocr force --ocr-lang eng # force OCR
 .venv/bin/pdf2epub big.pdf --pages "1-40,55-" --split-level 2
@@ -34,6 +35,7 @@ python3 -m venv .venv && .venv/bin/pip install -e '.[ocr,dev]'
 | Code | Monospace runs → `<pre><code>` with indentation preserved; monospace URLs/emails stay inline |
 | Scans | Pages with no text layer are OCR'd: Tesseract if installed, otherwise RapidOCR (pure pip). Without either, the page image is embedded and a warning is printed |
 | Packaging | EPUB 3 + NCX, nested nav built from headings, cover from page 1, metadata/title/language detection, sensible chapter sizes |
+| HTML output | Same pipeline, single self-contained HTML file with inline CSS (dark-mode), clickable TOC, and images in a sibling folder — use `-o file.html` |
 
 ## Verification
 

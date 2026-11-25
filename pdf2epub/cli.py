@@ -13,7 +13,7 @@ from .converter import ConversionOptions, convert
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="pdf2epub", description="Convert PDFs to structured EPUB 3 files.")
     ap.add_argument("inputs", nargs="+", help="PDF file(s) or directories containing PDFs")
-    ap.add_argument("-o", "--output", help="output .epub (single input) or directory (multiple inputs)")
+    ap.add_argument("-o", "--output", help="output .epub or .html (single input) or directory (multiple inputs)")
     ap.add_argument("--title"); ap.add_argument("--author"); ap.add_argument("--language", help="e.g. en, de, fr")
     ap.add_argument("--pages", help='page selection, e.g. "1-10,15,20-"')
     ap.add_argument("--no-images", action="store_true", help="omit images and figures")
@@ -50,12 +50,15 @@ def main(argv=None) -> int:
                              split_level=a.split_level, keep_running_heads=a.keep_running_heads,
                              footnotes=not a.no_footnotes, equations=not a.no_equations, ml="on" if a.ml else "off", mathml=a.mathml, ml_tables=not a.no_ml_tables, use_outline=not a.ignore_outline)
     rc, reports = 0, []
+    ext = ".epub"
+    if a.output and a.output.lower().endswith((".html", ".htm")):
+        ext = os.path.splitext(a.output)[1]
     for f in files:
         if len(files) == 1 and a.output:
             out = a.output
         else:
             out = os.path.join(a.output or os.path.dirname(os.path.abspath(f)),
-                               os.path.splitext(os.path.basename(f))[0] + ".epub")
+                               os.path.splitext(os.path.basename(f))[0] + ext)
         try:
             r = convert(f, out, opts)
         except Exception as e:  # keep batch going

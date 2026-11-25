@@ -289,6 +289,20 @@ def test_algorithm(pdfs):
     assert "while" in pre_text.lower() or "return" in pre_text.lower()
 
 
+def test_html_output(pdfs):
+    """PDF converts to a single self-contained HTML file with TOC and images."""
+    out = pdfs / "book.html"
+    rep = convert(str(pdfs / "book.pdf"), str(out), ConversionOptions())
+    assert out.exists()
+    html = out.read_text()
+    assert "<!DOCTYPE html>" in html
+    assert "<title>The Synthetic Book</title>" in html
+    assert '<nav id="toc">' in html
+    assert "Chapter One: Beginnings" in html
+    assert 'data-pagebreak="true"' in html
+    assert (pdfs / "images").is_dir() or not rep.images
+
+
 def test_page_list_and_metadata(pdfs):
     """EPUB contains page-list navigation, source metadata, and accessibility features."""
     _, _, z = run(pdfs, "book")

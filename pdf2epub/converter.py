@@ -11,6 +11,7 @@ import pymupdf
 
 from . import analyze as A
 from .epub import Chapter, EpubBook, NavEntry, write_epub
+from .html import write_html
 from .extract import OcrEngine, extract_page
 from .layout import reading_order
 from .model import Block, FootnoteDef
@@ -671,5 +672,8 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
     rep.merged_paragraphs = counters.merged_paragraphs
     if not any(b.kind == "heading" for b in blocks):
         rep.warnings.append("no headings detected; chapters were split by size")
-    write_epub(book, dst)
+    if dst.lower().endswith(".html") or dst.lower().endswith(".htm"):
+        write_html(book, dst)
+    else:
+        write_epub(book, dst)
     return rep
