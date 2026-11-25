@@ -643,6 +643,8 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
             rep.warnings.append(f"footnote {mk} on page {pg + 1}: reference not located in the body text (note dropped)")
 
     base_title = title
+    if not chapters:
+        chapters = [{"file": "chap001.xhtml", "title": base_title, "blocks": [], "html": "<p></p>", "chars": 0}]
     for ch in chapters:
         if not ch["title"]:
             ch["title"] = base_title if ch is chapters[0] else f"{base_title} (continued)"
@@ -654,9 +656,11 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
         for lv, text, f, hidn in nav_raw:
             if lv - top + 1 <= opts.nav_depth:
                 book.nav.append(NavEntry(lv - top + 1, text, f"{f}#{hidn}"))
-        if chapters and not chapters[0]["head"] and chapters[0]["blocks"] and (
+        if chapters and not chapters[0].get("head") and chapters[0]["blocks"] and (
                 not book.nav or not book.nav[0].href.startswith(chapters[0]["file"])):
             book.nav.insert(0, NavEntry(1, chapters[0]["title"], chapters[0]["file"]))
+    if not book.nav and book.chapters:
+        book.nav.append(NavEntry(1, book.chapters[0].title, book.chapters[0].filename))
     rep.chapters = len(book.chapters)
     rep.headings = counters.headings
     rep.heading_source = counters.heading_source
