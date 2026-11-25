@@ -294,33 +294,51 @@ def _ruled_tables(page: pymupdf.Page, words, area: float) -> list[TableItem]:
             groups[-1].append(r)
         else:
             groups.append([r])
-    out: list[TableItem] = []
-    for g in groups:
+
+    def _try_grid(g: list[tuple[float, float, float]]) -> Optional[TableItem]:
         if len(g) < 2:
-            continue
+            return None
         y0, y1 = g[0][0] - 2, g[-1][0] + 2
         x_all = [w[0] for w in words if y0 <= (w[1] + w[3]) / 2 <= y1] + \
                 [w[2] for w in words if y0 <= (w[1] + w[3]) / 2 <= y1]
         if not x_all:
-            continue
+            return None
         bbox = (min(x_all) - 1, y0, max(x_all) + 1, y1)
         if _area(bbox) > 0.92 * area:
-            continue
+            return None
         grid = _grid_from_words(words, bbox)
         if not grid or len(grid) < 2 or max(len(r) for r in grid) < 2:
-            continue
-        cells = [c for r in grid for c in r]
-        if sum(1 for c in cells if c) < 0.4 * len(cells):
-            continue
+            return None
         ncols = max(len(r) for r in grid)
+        cells = [c for r in grid for c in r if c]
+        if len(cells) < 0.4 * sum(len(r) for r in grid):
+            return None
+        avg_len = sum(len(c) for c in cells) / max(len(cells), 1)
+        if ncols <= 2 and avg_len > 40:
+            return None
         filled_cols = sum(1 for ci in range(ncols) if sum(1 for r in grid if ci < len(r) and r[ci]) >= 2)
         if filled_cols < 2:
+            return None
+        return TableItem(bbox=bbox, page=page.number, rows=grid)
+
+    out: list[TableItem] = []
+    for g in groups:
+        t = _try_grid(g)
+        if t:
+            out.append(t)
             continue
-        all_text = [c for r in grid for c in r if c]
-        avg_len = sum(len(c) for c in all_text) / max(len(all_text), 1)
-        if ncols <= 2 and avg_len > 40:
-            continue
-        out.append(TableItem(bbox=bbox, page=page.number, rows=grid))
+        if len(g) >= 4:
+            gaps = [(g[i + 1][0] - g[i][0], i + 1) for i in range(len(g) - 1)]
+            gaps.sort(reverse=True)
+            for _, split_at in gaps[:3]:
+                left = _try_grid(g[:split_at])
+                right = _try_grid(g[split_at:])
+                if left or right:
+                    if left:
+                        out.append(left)
+                    if right:
+                        out.append(right)
+                    break
     return out
 
 
