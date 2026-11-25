@@ -52,16 +52,6 @@ sup, sub { line-height: 0; }
   table { font-size: .8em; }
   pre { font-size: .8em; padding: .4em .5em; }
 }
-@media (prefers-color-scheme: dark) {
-  body { color: #ddd; background: #1a1a1a; }
-  pre { background: #2a2a2a; }
-  th { background: #333; }
-  th, td { border-color: #555; }
-  .algorithm { background: #252520; border-color: #444; }
-  aside.footnote { border-left-color: #555; }
-  hr { border-top-color: #555; }
-  a { color: #7cafc2; }
-}
 """
 
 

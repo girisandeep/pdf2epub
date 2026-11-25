@@ -79,7 +79,7 @@ class _Counter:
 
 def _leaf(items: list[Item], ctr: _Counter) -> list[Item]:
     rid = ctr.next()
-    items = sorted(items, key=lambda i: (i.y0, i.x0))
+    items = sorted(items, key=lambda i: (round(i.y0), i.x0))
     for it in items:
         it.region = rid
     return items

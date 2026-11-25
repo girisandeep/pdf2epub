@@ -292,6 +292,8 @@ def _is_break(prev: Line, ln: Line, cur: Block, left: float, right: float, st: D
         return True
     if dy > size * (st.leading + 0.28):
         return True
+    if abs(dy) < 0.3 * size and ln.x0 > prev.x1:
+        return False
     ptxt = prev.text.rstrip()
     words = ln.text.split()
     if words and not ptxt.endswith(("-", "­")) and len(ptxt) > 3:
