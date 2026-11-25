@@ -165,6 +165,7 @@ def write_epub(book: EpubBook, path: str) -> None:
            '<meta property="schema:accessibilityFeature">structuralNavigation</meta>'
            '<meta property="schema:accessibilityFeature">tableOfContents</meta>'
            '<meta property="schema:accessibilityFeature">alternativeText</meta>'
+           + ('<meta property="schema:accessibilityFeature">printPageNumbers</meta>' if book.page_map else "") +
            '<meta property="schema:accessModeSufficient">textual,visual</meta>'
            '<meta property="schema:accessibilitySummary">Converted from PDF with structural navigation, table of contents, and alternative text for images.</meta>'
            + ('<meta name="cover" content="cover-image"/>' if book.cover else "") +

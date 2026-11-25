@@ -65,7 +65,7 @@ def main(argv=None) -> int:
         reports.append(r.to_dict())
         print(f"{f} -> {out}\n  {r.pages} pages, {r.chapters} chapters, {r.headings} headings ({r.heading_source}), "
               f"{r.lists} lists, {r.tables} tables, {r.images} images ({r.equations} equations), {r.footnotes} footnotes, "
-              f"{r.running_lines_removed} header/footer lines removed, lang={r.language}"
+              f"{r.merged_paragraphs} merged paragraphs, {r.running_lines_removed} header/footer lines removed, lang={r.language}"
               + (f", OCR on {r.ocr_pages} pages ({r.ocr_backend})" if r.ocr_pages else ""))
         for w in r.warnings:
             print(f"  warning: {w}")
