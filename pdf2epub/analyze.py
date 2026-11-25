@@ -1253,11 +1253,19 @@ _BIB_AUTHOR_START = re.compile(
 
 
 def _bib_author_key(text: str) -> str:
-    """Extract 'lastname-year' key from an author-year bibliography entry."""
-    m = re.match(r"\s*([A-Z][a-zÀ-ɏ]+)", text)
-    name = m.group(1).lower() if m else "ref"
-    ym = _BIB_YEAR.search(text[:200])
+    """Extract 'lastname+year' key from an author-year bibliography entry."""
+    t = text.strip()
+    ym = _BIB_YEAR.search(t[:250])
     year = ym.group(1) if ym else ""
+    comma = t.find(",")
+    if 0 < comma < (ym.start() if ym else len(t)):
+        before = t[:comma].split()
+    else:
+        end = ym.start() if ym else len(t)
+        before = t[:end].split()
+    name = before[-1].rstrip(".,;:").lower() if before else "ref"
+    if len(before) == 1:
+        name = before[0].rstrip(".,;:").lower()
     return f"{name}{year}"
 
 

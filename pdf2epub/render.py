@@ -28,6 +28,12 @@ _XREF_RE = re.compile(
 
 _CITE_RE = re.compile(r"\[(\d+(?:\s*[,;]\s*\d+)*)\]")
 _CITE_ALPHA_RE = re.compile(r"\[([A-Z][A-Za-z+\d]{1,20}(?:\s*[,;]\s*[A-Z][A-Za-z+\d]{1,20})*)\]")
+_CITE_PAREN_RE = re.compile(r"\(([^)]{8,200})\)")
+_CITE_SINGLE_RE = re.compile(
+    r"([A-Z][\wÀ-ɏ'-]+)"
+    r"(?:\s+(?:et\s+al\.|and|&)\s*,?\s*(?:[A-Z][\wÀ-ɏ'-]+)?)?"
+    r",?\s*((?:19|20)\d{2}[a-z]?)\s*$"
+)
 
 
 @dataclass
@@ -233,6 +239,34 @@ def _insert_xrefs(html: str, ctx: RenderCtx) -> str:
                     result.append("[" + ", ".join(parts_c) + "]")
                     last_end = m.end()
                     linked.add((m.start(), m.end()))
+        for m in _CITE_PAREN_RE.finditer(text):
+            if any(s <= m.start() < e for s, e in linked):
+                continue
+            if m.start() < last_end:
+                continue
+            parts = [p.strip() for p in m.group(1).split(";")]
+            parts_out = []
+            any_linked = False
+            for part in parts:
+                sm = _CITE_SINGLE_RE.match(part)
+                if not sm:
+                    parts_out.append(part)
+                    continue
+                lastname = sm.group(1).lower()
+                year = sm.group(2)
+                tgt = ctx.xref_targets.get(f"cite {lastname}{year}")
+                if tgt:
+                    file, anchor = tgt
+                    href = f"#{anchor}" if file == ctx.current_file else f"{file}#{anchor}"
+                    parts_out.append(f'<a href="{href}">{part}</a>')
+                    any_linked = True
+                else:
+                    parts_out.append(part)
+            if any_linked:
+                result.append(text[last_end:m.start()])
+                result.append("(" + "; ".join(parts_out) + ")")
+                last_end = m.end()
+                linked.add((m.start(), m.end()))
         if result:
             result.append(text[last_end:])
             out.append("".join(result))
