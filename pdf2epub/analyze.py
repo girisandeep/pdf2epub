@@ -813,7 +813,9 @@ def detect_toc(blocks: list[Block], c: Counters) -> list[Block]:
                 break
             run.append((m.group("t").strip(" .·…"), m.group("n")))
             j += 1
-        if len(run) >= 3:
+        avg_len = sum(len(t) for t, _ in run) / max(len(run), 1) if run else 0
+        min_entries = 5 if avg_len < 25 else 3
+        if len(run) >= min_entries:
             c.toc_pages_entries += len(run)
             out.append(Block("toc", blocks[i].page, entries=run, y0=blocks[i].y0))
             i = j
