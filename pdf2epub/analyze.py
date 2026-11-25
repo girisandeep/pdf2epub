@@ -810,6 +810,21 @@ def _short_fragment(b: Block) -> bool:
     return len(t) < 40 and not t.endswith(TERMINAL)
 
 
+def _para_duplicates_table(b: Block, table: "TableItem") -> bool:
+    """True when a paragraph is entirely composed of text already in a nearby table."""
+    text = b.text.strip()
+    if len(text) > 200:
+        return False
+    para_words = set(re.findall(r"\w+", text.lower()))
+    if len(para_words) < 3:
+        return False
+    cell_words: set[str] = set()
+    for row in table.rows:
+        for cell in row:
+            cell_words.update(re.findall(r"\w+", cell.lower()))
+    return para_words <= cell_words
+
+
 def merge_continuations(blocks: list[Block], c: Counters) -> list[Block]:
     out: list[Block] = []
     for b in blocks:
@@ -840,6 +855,8 @@ def merge_continuations(blocks: list[Block], c: Counters) -> list[Block]:
                     c.merged_paragraphs += 1
                     continue
         elif prev.kind == "table":
+            if prev.table and _para_duplicates_table(b, prev.table):
+                continue
             p = _find_last_para(out)
             if p is not None and _try_merge(p, b, c):
                 continue
