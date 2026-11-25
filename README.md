@@ -120,19 +120,19 @@ Pandoc cannot read PDF files. All metrics use the same evaluator (`tests/benchma
 
 | Metric | pdf2epub | Calibre 9.19 |
 |---|---|---|
-| **Avg Recall** (text recovery) | 0.947 | 0.974 |
-| **Avg Precision** (no junk text) | **0.989** | 0.958 |
+| **Avg Recall** (text recovery) | 0.969 | 0.974 |
+| **Avg Precision** (no junk text) | **0.985** | 0.958 |
 | **Valid EPUBs** | **10/10** | 0/10 |
 | **Headings detected** | **556** | 39 |
 | **Tables detected** | **94** | 0 |
 | **Images extracted** | **326** | 166 |
-| **Avg Fragment %** (stray short lines) | **8.9%** | 17.3% |
+| **Avg Fragment %** (stray short lines) | **1.1%** | 17.3% |
 | **TOC Navigation** | **10/10** | 0/10 |
 | **Page-list Navigation** | **10/10** | 0/10 |
 | **Avg Metadata Fields** (of 7) | **5.7** | 2.0 |
 
-Calibre's higher recall comes from retaining running headers, footers, and page numbers that
-pdf2epub strips — this boosts word count but lowers precision and adds noise. Calibre's output
+Calibre's slightly higher recall comes from retaining running headers, footers, and page numbers
+that pdf2epub strips — this boosts word count but lowers precision and adds noise. Calibre's output
 treats every PDF line as a separate `<p>` tag with no paragraph merging, produces no headings from
 most PDFs, cannot detect tables, and fails EPUB structural validation on all 10 documents.
 
@@ -140,26 +140,26 @@ Per-document results:
 
 | Document | Pages | Tool | Recall | Precision | Valid | Headings | Tables | Images | Frag% |
 |---|---|---|---|---|---|---|---|---|---|
-| adam | 15 | pdf2epub | 0.776 | **0.966** | **Yes** | **21** | 0 | **65** | **3.8** |
+| adam | 15 | pdf2epub | 0.884 | **0.940** | **Yes** | **21** | 0 | **65** | **3.8** |
 | | | Calibre | **0.890** | 0.809 | No | 0 | 0 | 0 | 28.9 |
-| attention | 15 | pdf2epub | 0.933 | **0.986** | **Yes** | **26** | **4** | **17** | **0.0** |
+| attention | 15 | pdf2epub | 0.949 | **0.982** | **Yes** | **26** | **4** | **17** | **0.0** |
 | | | Calibre | **0.982** | 0.964 | No | 2 | 0 | 3 | 13.6 |
-| bert | 16 | pdf2epub | 0.962 | **0.988** | **Yes** | **33** | **6** | 21 | **5.5** |
+| bert | 16 | pdf2epub | 0.975 | **0.987** | **Yes** | **33** | **6** | 21 | **2.0** |
 | | | Calibre | **0.975** | 0.951 | No | 0 | 0 | **38** | 16.1 |
-| gpt3 | 75 | pdf2epub | **0.996** | **0.997** | **Yes** | **55** | **54** | **86** | **5.1** |
+| gpt3 | 75 | pdf2epub | **0.996** | **0.997** | **Yes** | **55** | **54** | **86** | **0.6** |
 | | | Calibre | 0.994 | 0.995 | No | 2 | 0 | 83 | 13.2 |
-| irs_pub | 36 | pdf2epub | **0.991** | **1.000** | **Yes** | **51** | **4** | 2 | 15.4 |
-| | | Calibre | 0.985 | 0.985 | No | 3 | 0 | 3 | **14.0** |
-| resnet | 12 | pdf2epub | 0.980 | **0.995** | **Yes** | **22** | **16** | **9** | **0.0** |
+| irs_pub | 36 | pdf2epub | **0.991** | **1.000** | **Yes** | **51** | **4** | 2 | **0.4** |
+| | | Calibre | 0.985 | 0.985 | No | 3 | 0 | 3 | 14.0 |
+| resnet | 12 | pdf2epub | 0.981 | **0.995** | **Yes** | **22** | **16** | **9** | **0.0** |
 | | | Calibre | **0.993** | 0.987 | No | 2 | 0 | 0 | 15.3 |
-| thinkpython | 244 | pdf2epub | 0.979 | **0.999** | **Yes** | **249** | **8** | **28** | 40.2 |
-| | | Calibre | **0.986** | 0.998 | No | 28 | 0 | 0 | **32.5** |
-| vae | 14 | pdf2epub | 0.855 | **0.964** | **Yes** | **23** | 0 | **68** | **3.2** |
+| thinkpython | 244 | pdf2epub | 0.979 | **0.999** | **Yes** | **249** | **8** | **28** | **0.9** |
+| | | Calibre | **0.986** | 0.998 | No | 28 | 0 | 0 | 32.5 |
+| vae | 14 | pdf2epub | 0.940 | **0.953** | **Yes** | **23** | 0 | **68** | **3.2** |
 | | | Calibre | **0.938** | 0.901 | No | 2 | 0 | 6 | 24.9 |
-| wiki_de | 19 | pdf2epub | **0.998** | **0.998** | **Yes** | **33** | 0 | 13 | 9.8 |
-| | | Calibre | 0.996 | 0.993 | No | 0 | 0 | 13 | **9.6** |
-| wiki_en | 42 | pdf2epub | 0.999 | **0.998** | **Yes** | **43** | **2** | 17 | 5.9 |
-| | | Calibre | **0.999** | 0.998 | No | 0 | 0 | **20** | **4.9** |
+| wiki_de | 19 | pdf2epub | **0.998** | **0.998** | **Yes** | **33** | 0 | 13 | **0.0** |
+| | | Calibre | 0.996 | 0.993 | No | 0 | 0 | 13 | 9.6 |
+| wiki_en | 42 | pdf2epub | 0.999 | **0.998** | **Yes** | **43** | **2** | 17 | **0.4** |
+| | | Calibre | **0.999** | 0.998 | No | 0 | 0 | **20** | 4.9 |
 
 Reproduce with `python tests/benchmark.py` (requires Calibre installed).
 

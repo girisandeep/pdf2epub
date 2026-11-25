@@ -1,8 +1,8 @@
 {
   "adam": {
     "pdf2epub": {
-      "recall": 0.7755,
-      "precision": 0.9658,
+      "recall": 0.8836,
+      "precision": 0.9402,
       "valid": true,
       "valid_errors": 0,
       "chapters": 8,
@@ -27,8 +27,8 @@
         "accessibility": true,
         "page_numbers": true
       },
-      "file_size_kb": 1341.6,
-      "secs": 3.0
+      "file_size_kb": 1342.1,
+      "secs": 2.9
     },
     "calibre": {
       "recall": 0.89,
@@ -57,14 +57,14 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 94.8,
-      "secs": 1.6
+      "file_size_kb": 94.6,
+      "secs": 5.0
     }
   },
   "attention": {
     "pdf2epub": {
-      "recall": 0.9326,
-      "precision": 0.9856,
+      "recall": 0.9491,
+      "precision": 0.9824,
       "valid": true,
       "valid_errors": 0,
       "chapters": 5,
@@ -89,8 +89,8 @@
         "accessibility": true,
         "page_numbers": true
       },
-      "file_size_kb": 1052.4,
-      "secs": 2.7
+      "file_size_kb": 1052.6,
+      "secs": 2.6
     },
     "calibre": {
       "recall": 0.9818,
@@ -119,14 +119,14 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 207.3,
-      "secs": 2.2
+      "file_size_kb": 217.3,
+      "secs": 2.1
     }
   },
   "bert": {
     "pdf2epub": {
-      "recall": 0.9619,
-      "precision": 0.988,
+      "recall": 0.9745,
+      "precision": 0.9871,
       "valid": true,
       "valid_errors": 0,
       "chapters": 9,
@@ -136,7 +136,7 @@
       "lists": 12,
       "footnotes": 28,
       "paras": 201,
-      "frag_pct": 5.5,
+      "frag_pct": 2.0,
       "mathjunk": 0,
       "dup": 0,
       "has_toc": true,
@@ -151,8 +151,8 @@
         "accessibility": true,
         "page_numbers": true
       },
-      "file_size_kb": 461.7,
-      "secs": 3.3
+      "file_size_kb": 461.9,
+      "secs": 3.1
     },
     "calibre": {
       "recall": 0.9749,
@@ -181,14 +181,14 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 97.9,
-      "secs": 1.6
+      "file_size_kb": 95.5,
+      "secs": 1.5
     }
   },
   "gpt3": {
     "pdf2epub": {
       "recall": 0.9962,
-      "precision": 0.9969,
+      "precision": 0.9968,
       "valid": true,
       "valid_errors": 0,
       "chapters": 14,
@@ -198,7 +198,7 @@
       "lists": 9,
       "footnotes": 22,
       "paras": 467,
-      "frag_pct": 5.1,
+      "frag_pct": 0.6,
       "mathjunk": 0,
       "dup": 0,
       "has_toc": true,
@@ -213,8 +213,8 @@
         "accessibility": true,
         "page_numbers": true
       },
-      "file_size_kb": 6809.1,
-      "secs": 17.6
+      "file_size_kb": 6809.2,
+      "secs": 17.1
     },
     "calibre": {
       "recall": 0.9935,
@@ -243,8 +243,8 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 6667.7,
-      "secs": 17.3
+      "file_size_kb": 6667.3,
+      "secs": 16.6
     }
   },
   "irs_pub": {
@@ -260,7 +260,7 @@
       "lists": 108,
       "footnotes": 0,
       "paras": 948,
-      "frag_pct": 15.4,
+      "frag_pct": 0.4,
       "mathjunk": 0,
       "dup": 0,
       "has_toc": true,
@@ -275,8 +275,8 @@
         "accessibility": true,
         "page_numbers": true
       },
-      "file_size_kb": 821.5,
-      "secs": 7.0
+      "file_size_kb": 821.6,
+      "secs": 6.6
     },
     "calibre": {
       "recall": 0.9851,
@@ -305,13 +305,13 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 923.5,
-      "secs": 1.9
+      "file_size_kb": 930.3,
+      "secs": 1.8
     }
   },
   "resnet": {
     "pdf2epub": {
-      "recall": 0.9798,
+      "recall": 0.9809,
       "precision": 0.9949,
       "valid": true,
       "valid_errors": 0,
@@ -337,8 +337,8 @@
         "accessibility": true,
         "page_numbers": true
       },
-      "file_size_kb": 308.3,
-      "secs": 3.5
+      "file_size_kb": 308.4,
+      "secs": 3.4
     },
     "calibre": {
       "recall": 0.9925,
@@ -367,14 +367,14 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 156.3,
+      "file_size_kb": 40.2,
       "secs": 1.6
     }
   },
   "thinkpython": {
     "pdf2epub": {
-      "recall": 0.9785,
-      "precision": 0.9991,
+      "recall": 0.9792,
+      "precision": 0.9989,
       "valid": true,
       "valid_errors": 0,
       "chapters": 23,
@@ -384,7 +384,7 @@
       "lists": 65,
       "footnotes": 4,
       "paras": 3895,
-      "frag_pct": 40.2,
+      "frag_pct": 0.9,
       "mathjunk": 2,
       "dup": 0,
       "has_toc": true,
@@ -399,8 +399,8 @@
         "accessibility": true,
         "page_numbers": true
       },
-      "file_size_kb": 488.2,
-      "secs": 21.6
+      "file_size_kb": 488.4,
+      "secs": 20.1
     },
     "calibre": {
       "recall": 0.9864,
@@ -429,14 +429,14 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 333.2,
-      "secs": 4.3
+      "file_size_kb": 229.7,
+      "secs": 3.9
     }
   },
   "vae": {
     "pdf2epub": {
-      "recall": 0.8547,
-      "precision": 0.9636,
+      "recall": 0.9404,
+      "precision": 0.9525,
       "valid": true,
       "valid_errors": 0,
       "chapters": 7,
@@ -461,8 +461,8 @@
         "accessibility": true,
         "page_numbers": true
       },
-      "file_size_kb": 3817.2,
-      "secs": 3.3
+      "file_size_kb": 3817.6,
+      "secs": 3.2
     },
     "calibre": {
       "recall": 0.9384,
@@ -491,8 +491,8 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 2968.7,
-      "secs": 6.9
+      "file_size_kb": 3072.4,
+      "secs": 6.8
     }
   },
   "wiki_de": {
@@ -508,7 +508,7 @@
       "lists": 3,
       "footnotes": 0,
       "paras": 214,
-      "frag_pct": 9.8,
+      "frag_pct": 0.0,
       "mathjunk": 0,
       "dup": 0,
       "has_toc": true,
@@ -523,8 +523,8 @@
         "accessibility": true,
         "page_numbers": true
       },
-      "file_size_kb": 318.8,
-      "secs": 2.4
+      "file_size_kb": 318.9,
+      "secs": 2.2
     },
     "calibre": {
       "recall": 0.9964,
@@ -553,7 +553,7 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 322.3,
+      "file_size_kb": 324.7,
       "secs": 1.1
     }
   },
@@ -570,7 +570,7 @@
       "lists": 4,
       "footnotes": 0,
       "paras": 454,
-      "frag_pct": 5.9,
+      "frag_pct": 0.4,
       "mathjunk": 0,
       "dup": 0,
       "has_toc": true,
@@ -586,7 +586,7 @@
         "page_numbers": true
       },
       "file_size_kb": 471.9,
-      "secs": 6.2
+      "secs": 5.5
     },
     "calibre": {
       "recall": 0.999,
@@ -615,8 +615,8 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 499.7,
-      "secs": 2.0
+      "file_size_kb": 498.0,
+      "secs": 1.8
     }
   }
 }

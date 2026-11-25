@@ -129,12 +129,16 @@ def evaluate_epub(epub_path: str, ref: Counter) -> dict:
             footnotes += len(doc.xpath("//*[@class='footnote']"))
 
             for p in doc.xpath("//x:p|//x:li|//x:dd|//x:dt", namespaces=NS):
+                tag = p.tag.rsplit("}", 1)[-1]
+                is_li = tag in ("li", "dt", "dd")
                 paras.append(("".join(p.itertext()).strip(),
-                              len(p.xpath(".//x:sub|.//x:sup", namespaces=NS)), False))
+                              len(p.xpath(".//x:sub|.//x:sup", namespaces=NS)), is_li))
             for p in doc.xpath("//p|//li|//dd|//dt"):
                 txt = "".join(p.itertext()).strip()
                 if txt:
-                    paras.append((txt, len(p.xpath(".//sub|.//sup")), False))
+                    tag = p.tag.rsplit("}", 1)[-1] if "}" in p.tag else p.tag
+                    is_li = tag in ("li", "dt", "dd")
+                    paras.append((txt, len(p.xpath(".//sub|.//sup")), is_li))
         except Exception:
             continue
 

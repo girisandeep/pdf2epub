@@ -38,6 +38,7 @@ hr { border: none; border-top: 1px solid #999; margin: 1.5em 15%; }
 sup, sub { line-height: 0; }
 .cover { text-align: center; margin: 0; padding: 0; } .cover img { max-width: 100%; max-height: 100%; }
 [epub\\:type~="pagebreak"] { display: none; }
+.eq-alt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
 @media (prefers-color-scheme: dark) {
   body { color: #e0e0e0; background: #1a1a1a; }
   pre { background: #2a2a2a; }
