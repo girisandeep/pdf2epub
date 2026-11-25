@@ -793,6 +793,15 @@ def extract_page(doc: pymupdf.Document, pno: int, *, with_images: bool = True,
     covers = [i for i in images if _area(i.bbox) > 0.6 * page_area]
 
     need_ocr = ocr_mode == "force" or (ocr_mode == "auto" and nchars < 15 and bool(covers))
+    if not need_ocr and ocr_mode == "auto" and bool(covers) and 15 <= nchars <= 300:
+        all_text = " ".join(l.text for l in raw)
+        words = re.findall(r"[a-zA-Z]{3,}", all_text)
+        if words:
+            from .text import english_words
+            ew = english_words()
+            good = sum(1 for w in words if w.lower() in ew)
+            if good / len(words) < 0.3:
+                need_ocr = True
     if need_ocr:
         if ocr and ocr.available:
             try:
