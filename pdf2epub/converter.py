@@ -92,6 +92,87 @@ def parse_pages(spec: Optional[str], n: int) -> list[int]:
 _BAD_TITLE = re.compile(r"^(untitled|microsoft word|\.?pdf|slide \d+|document\d*|\s*)$|\.(docx?|pdf|indd|tex|pptx?)$", re.I)
 
 
+_INSTITUTION_RE = re.compile(
+    r"university|universiteit|college|institute|institute|department|laboratory|"
+    r"school|research|group|center|centre|press|foundation|"
+    r"microsoft|google|facebook|meta ai|openai|deepmind|amazon|ibm|"
+    r"@|\.edu|\.com|\.org", re.I)
+
+_AUTHOR_JUNK = re.compile(r"[∗†‡§¶\d,]+$")
+
+_SECTION_START = re.compile(
+    r"^(abstract|introduction|contents|1\s|1\.\s|§1)", re.I)
+
+
+def _extract_authors(blocks: list[Block], body_size: float) -> Optional[str]:
+    """Extract author names from the first page by looking between the title and Abstract."""
+    if not blocks:
+        return None
+    first_page = blocks[0].page
+    title_idx = None
+    for i, b in enumerate(blocks):
+        if b.page != first_page:
+            break
+        if b.kind == "heading" and b.level == 1:
+            title_idx = i
+            break
+    if title_idx is None:
+        best_i, best_sz = None, body_size * 1.3
+        for i, b in enumerate(blocks):
+            if b.page != first_page:
+                break
+            if b.lines and len(b.lines) <= 3:
+                sz = max(l.size for l in b.lines)
+                if sz > best_sz:
+                    best_i, best_sz = i, sz
+        title_idx = best_i
+    if title_idx is None:
+        return None
+    end_idx = None
+    for i in range(title_idx + 1, len(blocks)):
+        b = blocks[i]
+        if b.page != first_page:
+            end_idx = i
+            break
+        t = b.text.strip()
+        if _SECTION_START.match(t):
+            end_idx = i
+            break
+        if b.kind == "para" and len(t) >= 120:
+            end_idx = i
+            break
+    if end_idx is None:
+        end_idx = min(title_idx + 25, len(blocks))
+    authors = []
+    for i in range(title_idx + 1, end_idx):
+        b = blocks[i]
+        if b.kind not in ("para", "heading") or not b.lines:
+            continue
+        t = b.text.strip()
+        if len(t) > 60 or len(t) < 3:
+            continue
+        if len(b.lines) > 2:
+            continue
+        sz = max(l.size for l in b.lines)
+        if sz < body_size * 0.85:
+            continue
+        if _INSTITUTION_RE.search(t):
+            continue
+        if "@" in t or t.startswith("http"):
+            continue
+        name = _AUTHOR_JUNK.sub("", t).strip().rstrip(",").strip()
+        words = name.split()
+        if len(words) < 2 or len(words) > 5:
+            continue
+        if not all(w[0].isupper() or w in ("de", "di", "van", "von", "der", "del", "la", "le", "al", "el",
+                                            "and", "et", "und") for w in words):
+            continue
+        authors.append(name)
+    if not authors:
+        return None
+    return ", ".join(authors[:8])
+
+
 def _clean_title(t: Optional[str]) -> Optional[str]:
     if not t:
         return None
@@ -354,6 +435,8 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
     blocks = A.demote_pseudo_code(blocks)
     blocks = A.detect_algorithms(blocks)
     blocks = A.merge_continuations(blocks, counters)
+    if not author:
+        author = _extract_authors(blocks, stats.body_size)
     blocks = A.merge_title_page(blocks)
     blocks = A.format_bibliography(blocks)
     blocks = A.build_lists(blocks, counters)
