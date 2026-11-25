@@ -399,7 +399,8 @@ def _title_match(a: str, b: str) -> float:
     sa, sb = _strip_num(a), _strip_num(b)
     if sa and sb:
         r = max(r, difflib.SequenceMatcher(None, sa, sb).ratio())
-        if min(len(sa), len(sb)) >= 5 and (sa in sb or sb in sa):
+        shorter = min(len(sa), len(sb))
+        if shorter >= 5 and (sa in sb or sb in sa) and shorter * 3 >= max(len(sa), len(sb)):
             r = max(r, 0.9)
     return r
 
@@ -591,7 +592,7 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
                         r -= 0.1
                     if r > best_r:
                         best, best_r = b, r
-            if best is not None and best_r >= 0.82:
+            if best is not None and best_r >= 0.82 and not best.text.strip()[:1].islower():
                 mark(best, lvl)
                 key_levels[_bkey(best)][min(lvl, 4)] += 1
             else:
@@ -623,8 +624,10 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
                             continue
                         if TOC_LINE_RE.match(ts):
                             continue
+                        if ts[:1].islower():
+                            continue
                         if k[0] <= body * 1.05:
-                            if ts.endswith(".") or CAPTION_RE.match(ts) or ts[:1].islower():
+                            if ts.endswith(".") or CAPTION_RE.match(ts):
                                 continue
                         mark(b, lvl)
     else:
