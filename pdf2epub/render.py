@@ -402,11 +402,23 @@ def _fn_aside(fn: FootnoteDef, ctx: RenderCtx) -> str:
             f'<p><a href="#r{fn.id}" class="fn-back">{escape(fn.marker)}</a> {body}</p></aside>')
 
 
-def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id) -> list[str]:
+def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id,
+                   page_map: list[tuple[int, str]] | None = None) -> list[str]:
     html: list[str] = []
+    seen_pages = {pg for pg, _ in page_map} if page_map is not None else set()
+    last_page = -1
     i, n = 0, len(blocks)
     while i < n:
         b = blocks[i]
+        if page_map is not None and b.page != last_page:
+            pg = b.page + 1
+            if pg not in seen_pages:
+                pid = f"pg-{pg}"
+                html.append(f'<span id="{pid}" epub:type="pagebreak" role="doc-pagebreak" '
+                            f'aria-label="Page {pg}"/>')
+                page_map.append((pg, f"{ctx.current_file}#{pid}"))
+                seen_pages.add(pg)
+            last_page = b.page
         k = b.kind
         if k == "heading":
             text = escape(b.synthetic_text) if b.synthetic_text is not None else \

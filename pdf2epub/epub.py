@@ -82,6 +82,7 @@ class EpubBook:
     description: str | None = None
     date: str | None = None                    # ISO 8601 date, e.g. "2024-01-15"
     source: str | None = None                  # original PDF filename
+    page_map: list[tuple[int, str]] = field(default_factory=list)  # (page_num, href)
 
 
 def xhtml(title: str, body: str, lang: str, css: str = "style.css", body_class: str = "") -> str:
@@ -176,12 +177,17 @@ def write_epub(book: EpubBook, path: str) -> None:
     if book.chapters:
         landmarks.append(f'<li><a epub:type="bodymatter" href="{book.chapters[0].filename}">Start</a></li>')
     landmarks.append('</ol></nav>')
+    page_list = ""
+    if book.page_map:
+        items = "".join(f'<li><a href="{escape(href)}">{pg}</a></li>' for pg, href in book.page_map)
+        page_list = f'\n<nav epub:type="page-list" hidden="hidden"><h2>Pages</h2><ol>{items}</ol></nav>'
     nav_body = ('<nav epub:type="toc" id="toc"><h1>Contents</h1>' + _nav_ol(tree) + "</nav>\n"
-                + "".join(landmarks))
+                + "".join(landmarks) + page_list)
     nav = xhtml("Contents", nav_body, lang)
+    max_pg = max((pg for pg, _ in book.page_map), default=0)
     ncx = ('<?xml version="1.0" encoding="utf-8"?>\n<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">'
            f'<head><meta name="dtb:uid" content="{escape(book.identifier)}"/><meta name="dtb:depth" content="{max(_depth(tree), 1)}"/>'
-           '<meta name="dtb:totalPageCount" content="0"/><meta name="dtb:maxPageNumber" content="0"/></head>'
+           f'<meta name="dtb:totalPageCount" content="{len(book.page_map)}"/><meta name="dtb:maxPageNumber" content="{max_pg}"/></head>'
            f'<docTitle><text>{escape(book.title)}</text></docTitle><navMap>{_ncx_points(tree, [0])}</navMap></ncx>')
     container = ('<?xml version="1.0"?>\n<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
                  '<rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>'

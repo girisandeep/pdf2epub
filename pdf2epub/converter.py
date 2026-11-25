@@ -600,9 +600,10 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
     # ---- 7. chapters, ids, images ----------------------------------------------
     ctx = RenderCtx(stats, footnotes=fn_defs)
     chapters, split = _split_chapters(blocks, opts, ctx)
+    page_map: list[tuple[int, str]] = []
     book = EpubBook(title=title, language=lang, author=author, cover=cover_bytes,
                     description=description, date=date,
-                    source=os.path.basename(src))
+                    source=os.path.basename(src), page_map=page_map)
 
     n_img = 0
     for b in blocks:
@@ -634,7 +635,8 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
     # ---- 8. render ----------------------------------------------------------------
     for ch in chapters:
         ctx.current_file = ch["file"]
-        body = render_blocks(ch["blocks"], ctx, heading_id=lambda b: b.anchor)
+        body = render_blocks(ch["blocks"], ctx, heading_id=lambda b: b.anchor,
+                             page_map=page_map)
         ch["html"] = "\n".join(body)
     for (pg, mk), d in fn_defs.items():
         if not d.used:
