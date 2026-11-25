@@ -306,6 +306,19 @@ def _build_xref_targets(blocks: list[Block], chapters: list[dict], ctx: RenderCt
                 b.anchor = b.anchor or f"xref{xid}"
                 ctx.xref_targets.setdefault(f"algorithm {m.group(1)}", (file, b.anchor))
 
+        # --- standalone caption paragraphs (not attached to image/table) ---
+        if b.kind == "para" and b.lines:
+            first_text = " ".join(s.text for s in b.lines[0].spans).strip()
+            m = _CAPTION_NUM.match(first_text)
+            if m:
+                kind = _canon(m.group(1))
+                num = m.group(2)
+                key = f"{kind} {num}"
+                if key not in ctx.xref_targets:
+                    xid += 1
+                    b.anchor = b.anchor or f"xref{xid}"
+                    ctx.xref_targets.setdefault(key, (file, b.anchor))
+
         # --- theorems, lemmas, definitions (from paragraph start) ---
         if b.kind == "para" and b.lines:
             first_text = " ".join(s.text for s in b.lines[0].spans).strip()
@@ -459,9 +472,13 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
     A.strip_running(pages, counters, keep=opts.keep_running_heads)
     fn_defs: dict[tuple[int, str], FootnoteDef] = {}
     if opts.footnotes:
+        prev_last: FootnoteDef | None = None
         for p in pages:
-            for d in A.extract_footnotes(p, stats):
+            page_defs = A.extract_footnotes(p, stats, prev_last=prev_last)
+            for d in page_defs:
                 fn_defs[(p.number, d.marker)] = d
+            if page_defs:
+                prev_last = page_defs[-1]
         counters.footnotes = len(fn_defs)
 
     # ---- 4. reading order & segmentation -------------------------------------

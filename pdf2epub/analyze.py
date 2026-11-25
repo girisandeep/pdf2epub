@@ -188,7 +188,8 @@ def strip_running(pages: list[PageData], c: Counters, keep: bool = False) -> Non
 
 
 # -------------------------------------------------------------------- footnotes
-def extract_footnotes(page: PageData, stats: DocStats) -> list[FootnoteDef]:
+def extract_footnotes(page: PageData, stats: DocStats,
+                      prev_last: FootnoteDef | None = None) -> list[FootnoteDef]:
     """Split a page's footnote area from its body, but only when body markers confirm it."""
     body = stats.body_size
     ml_zone = [l for l in sorted(page.lines, key=lambda l: (l.y0, l.x0)) if l.ml_label == "footnote"]
@@ -205,6 +206,30 @@ def extract_footnotes(page: PageData, stats: DocStats) -> list[FootnoteDef]:
             return []
         zone = [l for l in sorted(page.lines, key=lambda l: (l.y0, l.x0))
                 if l.y0 >= start - 1 and l.size <= body * 0.95]
+    # In two-column layouts, a footnote may start on one page and continue on
+    # the next page's other column.  Process columns separately to avoid
+    # appending cross-column continuations to the wrong footnote.
+    mid = page.width / 2
+    left = [l for l in zone if l.x0 < mid]
+    right = [l for l in zone if l.x0 >= mid]
+    if left and right:
+        left_markers = any(footnote_marker(l) for l in left)
+        right_markers = any(footnote_marker(l) for l in right)
+        if right_markers and not left_markers:
+            orphans = sorted(left, key=lambda l: l.y0)
+            zone = sorted(right, key=lambda l: (l.y0, l.x0))
+        elif left_markers and not right_markers:
+            orphans = sorted(right, key=lambda l: l.y0)
+            zone = sorted(left, key=lambda l: (l.y0, l.x0))
+        else:
+            orphans = []
+            zone = (sorted(left, key=lambda l: (l.y0, l.x0))
+                    + sorted(right, key=lambda l: (l.y0, l.x0)))
+        if orphans:
+            if prev_last:
+                prev_last.lines.extend(orphans)
+            orphan_ids = {id(l) for l in orphans}
+            page.lines = [l for l in page.lines if id(l) not in orphan_ids]
     defs: list[FootnoteDef] = []
     for l in zone:
         mk = footnote_marker(l)
