@@ -290,6 +290,8 @@ def _is_break(prev: Line, ln: Line, cur: Block, left: float, right: float, st: D
     lm = list_marker(ln.text)
     if lm and (lm[0] == "bullet" or complete or dy > size * (st.leading + 0.1)):
         return True
+    if complete and _BIB_MARKER.match(ln.text):
+        return True
     if dy > size * (st.leading + 0.28):
         return True
     if abs(dy) < 0.3 * size and ln.x0 > prev.x1:
