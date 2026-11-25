@@ -7,6 +7,14 @@ import unicodedata
 _XML_BAD = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f￾￿\ud800-\udfff]")
 _LIGS = {"ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl",
          "ﬅ": "st", "ﬆ": "st", "­": ""}
+_PUA_MAP = {
+    "": "⎛", "": "⎜", "": "⎝",
+    "": "⎞", "": "⎟", "": "⎠",
+    "": "⎡", "": "⎢", "": "⎣",
+    "": "⎤", "": "⎥", "": "⎦",
+    "": "⎧", "": "⎨", "": "⎩",
+    "": "⎫", "": "⎬", "": "⎭",
+}
 _LIG_RE = re.compile("[" + "".join(_LIGS) + "]")
 
 BULLETS = "•●▪■◦○‣·∙►▸–—-*◆◇□☐✓✔➢➤"
@@ -30,9 +38,13 @@ _STOP = {
 _STOP = {k: set(v.split()) for k, v in _STOP.items()}
 
 
+_PUA_RE = re.compile("[" + "".join(re.escape(k) for k in _PUA_MAP) + "]")
+
+
 def clean(text: str) -> str:
     text = text.replace("\u2010", "-").replace("\u2011", "-")
     text = _LIG_RE.sub(lambda m: _LIGS[m.group()], text)
+    text = _PUA_RE.sub(lambda m: _PUA_MAP.get(m.group(), ""), text)
     return _XML_BAD.sub("", text)
 
 
