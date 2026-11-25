@@ -1161,7 +1161,10 @@ def detect_algorithms(blocks: list[Block]) -> list[Block]:
 
 # ------------------------------------------------------------------ bibliography
 
-_BIB_HEADING = re.compile(r"^(references|bibliography|works cited|cited literature|literaturverzeichnis|endnotes|notes)$", re.I)
+_BIB_HEADING = re.compile(
+    r"^(references|bibliography|works cited|cited literature"
+    r"|literaturverzeichnis|literatur|einzelnachweise|quellenangaben"
+    r"|endnotes|notes|bibliograf[ií]a|r[ée]f[ée]rences|riferimenti bibliografici)(\s*\(.*\))?$", re.I)
 _BIB_MARKER = re.compile(r"^\s*\[(\d+)\]\s*")
 _BIB_ALPHA_MARKER = re.compile(r"^\s*\[([A-Z][A-Za-z+\d]{1,20})\]\s*")
 _BIB_DOT_MARKER = re.compile(r"^\s*(\d{1,4})\.\s+")
@@ -1205,7 +1208,7 @@ def _format_bib_section(blocks: list[Block], ref_idx: int, section_id: int) -> b
         if m:
             if is_numeric:
                 num = int(m.group(1))
-                if num >= last_num:
+                if num > last_num:
                     bib_entries.append(i)
                     last_num = num
             else:
