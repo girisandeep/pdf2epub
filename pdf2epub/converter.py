@@ -361,7 +361,10 @@ def _split_chapters(blocks: list[Block], opts: ConversionOptions, ctx: RenderCtx
         elif cur is None:
             new("", None)
         cur["blocks"].append(b)
-        cur["chars"] += len(b.text) if b.kind != "heading" else 0
+        if b.kind == "toc":
+            cur["chars"] += sum(len(t) for t, _ in b.entries)
+        elif b.kind != "heading":
+            cur["chars"] += len(b.text)
         # keep chapter files a sane size: break on subheadings, or on any paragraph when huge
         if cur["chars"] > opts.max_chapter_chars and b.kind in ("para", "li"):
             cur = None
@@ -372,8 +375,13 @@ def _split_chapters(blocks: list[Block], opts: ConversionOptions, ctx: RenderCtx
     for c in chapters:
         if merged and merged[-1]["chars"] < opts.min_chapter_chars and not c.get("cont"):
             prev = merged[-1]
-            prev["blocks"] += c["blocks"]
-            prev["chars"] += c["chars"]
+            if prev["chars"] == 0 and c["chars"] > 0:
+                c["blocks"] = prev["blocks"] + c["blocks"]
+                c["chars"] += prev["chars"]
+                merged[-1] = c
+            else:
+                prev["blocks"] += c["blocks"]
+                prev["chars"] += c["chars"]
             continue
         merged.append(c)
     if len(merged) > 1 and merged[-1]["chars"] < opts.min_chapter_chars // 2 and not merged[-1].get("cont"):

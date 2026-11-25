@@ -1107,7 +1107,7 @@ def detect_toc(blocks: list[Block], c: Counters) -> list[Block]:
             elif run and ". . ." in t and len(t) < 120:
                 skipped += 1
                 j += 1
-            elif bk.kind == "heading" and len(run) >= 3 and len(t) < 80:
+            elif bk.kind == "heading" and bk.level > 1 and len(run) >= 3 and len(t) < 80:
                 skipped += 1
                 j += 1
             else:
