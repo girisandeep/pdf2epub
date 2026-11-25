@@ -657,7 +657,7 @@ def _find_last_para(out: list[Block]) -> Block | None:
     for i in range(len(out) - 1, -1, -1):
         if out[i].kind == "para":
             return out[i]
-        if out[i].kind not in ("image",):
+        if out[i].kind not in ("image", "table"):
             return None
     return None
 
@@ -703,6 +703,10 @@ def merge_continuations(blocks: list[Block], c: Counters) -> list[Block]:
         elif prev.kind == "image":
             p = _find_last_para(out)
             if p is not None and _try_merge(p, b, c):
+                continue
+        elif prev.kind == "table":
+            p = _find_last_para(out)
+            if p is not None and p.text.rstrip().endswith(("-", "­")) and _try_merge(p, b, c):
                 continue
         elif prev.kind == "para" and (
                 _short_fragment(prev) or _short_fragment(b)
