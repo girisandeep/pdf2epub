@@ -287,3 +287,27 @@ def test_algorithm(pdfs):
     pre_text = "".join(algo[0].xpath(".//x:pre//text()", namespaces=NS))
     assert "←" in pre_text or "theta" in pre_text.lower() or "Require" in pre_text
     assert "while" in pre_text.lower() or "return" in pre_text.lower()
+
+
+def test_page_list_and_metadata(pdfs):
+    """EPUB contains page-list navigation, source metadata, and accessibility features."""
+    _, _, z = run(pdfs, "book")
+    OPF_NS = {"opf": "http://www.idpf.org/2007/opf", "dc": "http://purl.org/dc/elements/1.1/"}
+    opf = etree.fromstring(z.read("OEBPS/content.opf"))
+    assert opf.xpath("//dc:source", namespaces=OPF_NS), "dc:source missing"
+    metas = [e.text for e in opf.xpath("//opf:meta[@property='schema:accessibilityFeature']", namespaces=OPF_NS)]
+    assert "printPageNumbers" in metas, "printPageNumbers accessibility feature missing"
+
+    nav = etree.fromstring(z.read("OEBPS/nav.xhtml"))
+    page_list = nav.xpath("//x:nav[@*[local-name()='type']='page-list']", namespaces=NS)
+    assert page_list, "page-list nav missing"
+    page_links = page_list[0].xpath(".//x:a", namespaces=NS)
+    assert len(page_links) >= 2, f"Expected >=2 page entries, got {len(page_links)}"
+    pages = [a.text for a in page_links]
+    assert pages == sorted(pages, key=int), "page-list not in order"
+
+    for ch_doc in [etree.fromstring(z.read(n)) for n in sorted(z.namelist()) if n.startswith("OEBPS/chap")]:
+        breaks = ch_doc.xpath("//x:span[@*[local-name()='type']='pagebreak']", namespaces=NS)
+        for b in breaks:
+            assert b.get("role") == "doc-pagebreak"
+            assert b.get("id", "").startswith("pg-")
