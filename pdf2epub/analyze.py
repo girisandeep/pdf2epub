@@ -615,7 +615,11 @@ def _find_last_para(out: list[Block]) -> Block | None:
 
 def _try_merge(p: Block, b: Block, c: Counters) -> bool:
     pl, nl = p.lines[-1], b.lines[0]
-    if abs(pl.size - nl.size) > 0.8 or pl.bold != nl.bold:
+    if abs(pl.size - nl.size) > 0.8:
+        return False
+    pl_bold = pl.spans[-1].bold if pl.spans else pl.bold
+    nl_bold = nl.spans[0].bold if nl.spans else nl.bold
+    if pl_bold != nl_bold:
         return False
     if CAPTION_RE.match(b.text):
         return False
