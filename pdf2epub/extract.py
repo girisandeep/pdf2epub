@@ -169,7 +169,7 @@ _NUMERIC_TAIL = re.compile(r"^\s*(\d{1,4}|[ivxlc]{1,6})\s*$", re.I)
 
 
 def _merge_rows(lines: list[Line], gap_factor: float = 1.2, min_gap: float = -2.0,
-                page_width: float = 0.0) -> list[Line]:
+                page_width: float = 0.0, col_cut: float = 0.0) -> list[Line]:
     """Join fragments that sit on one visual row (bullets, split spans, TOC page numbers)."""
     lines = sorted(lines, key=lambda l: (round(l.y0), l.x0))
     out: list[Line] = []
@@ -190,7 +190,9 @@ def _merge_rows(lines: list[Line], gap_factor: float = 1.2, min_gap: float = -2.
             ltxt = left.text.strip()
             is_marker = (len(ltxt) <= 2 and not ltxt.isalnum()) or bool(_MARKER_ONLY.match(ltxt))
             numeric_tail = bool(_NUMERIC_TAIL.match(right.text)) and gap > 0 and left.width > 3 * size
-            if page_width and not is_marker and not numeric_tail and smin > 0:
+            if col_cut and left.x1 <= col_cut and right.x0 >= col_cut:
+                continue
+            if page_width and not is_marker and smin > 0:
                 ratio = size / smin
                 if (ratio > 1.2 and gap > smin
                         and left.width > 0.3 * page_width
@@ -817,7 +819,12 @@ def extract_page(doc: pymupdf.Document, pno: int, *, with_images: bool = True,
         raw = _drop_furniture(raw, regions)
     if tables:
         raw = [l for l in raw if not any(_inside(l.bbox, t.bbox, 0.5) for t in tables)]
-    lines = _merge_rows(raw, 2.5, -10.0) if pd.ocr else _merge_rows(raw, page_width=rect.width)
+    if pd.ocr:
+        lines = _merge_rows(raw, 2.5, -10.0)
+    else:
+        from .layout import _find_cut
+        cut = _find_cut(raw) or 0.0
+        lines = _merge_rows(raw, page_width=rect.width, col_cut=cut)
     if not pd.ocr:
         _attach_links(page, lines)
     if regions is not None and not pd.ocr and with_images:
