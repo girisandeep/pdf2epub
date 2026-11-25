@@ -746,16 +746,11 @@ def _try_merge(p: Block, b: Block, c: Counters) -> bool:
         return False
     if CAPTION_RE.match(p.text) and not (hy and lower):
         return False
-    if pl_bold != nl_bold and not (not term and lower):
+    cont_term = pend.endswith((")", "]"))
+    if pl_bold != nl_bold and not (lower and (not term or cont_term)):
         return False
-    weak_term = term and not pend.endswith((".", "?", "!"))
-    if (hy and lower) or (not term and lower) or (not term and p.full_last and not b.indented_first):
-        p.lines += b.lines
-        p.full_last = b.full_last
-        p.region, p.page = b.region, b.page
-        c.merged_paragraphs += 1
-        return True
-    if lower and weak_term and len(b.text.strip()) < 20:
+    if (hy and lower) or (not term and lower) or (cont_term and lower) \
+            or (not term and p.full_last and not b.indented_first):
         p.lines += b.lines
         p.full_last = b.full_last
         p.region, p.page = b.region, b.page
