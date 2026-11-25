@@ -615,7 +615,10 @@ def _render_table(b: Block, ctx: RenderCtx) -> str:
                 attrs = ' scope="col"'
             elif numeric(c):
                 attrs = ' class="num"'
-            cells.append(f"<{tag}{attrs}>{escape(c)}</{tag}>")
+            cell_html = escape(c)
+            if ctx.xref_targets and not numeric(c):
+                cell_html = _insert_xrefs(cell_html, ctx)
+            cells.append(f"<{tag}{attrs}>{cell_html}</{tag}>")
         row = "<tr>" + "".join(cells) + "</tr>"
         if header and ri == 0:
             row = "<thead>" + row + "</thead><tbody>"
