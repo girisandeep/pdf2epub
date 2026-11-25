@@ -662,6 +662,7 @@ def merge_continuations(blocks: list[Block], c: Counters) -> list[Block]:
         elif prev.kind == "para" and (
                 _short_fragment(prev) or _short_fragment(b)
                 or prev.text.rstrip().endswith(("-", "­"))
+                or (not prev.text.rstrip().endswith(TERMINAL) and _starts_lower(b.text))
             ) and _try_merge(prev, b, c):
             continue
         out.append(b)
@@ -1062,12 +1063,8 @@ def detect_algorithms(blocks: list[Block]) -> list[Block]:
     while i < n:
         b = blocks[i]
         if b.kind in ("para", "heading") and _ALGO_HEADER.match(b.text.strip()):
-            run_start = i + 1
-            if b.kind == "heading":
-                out.append(b)
-                run_start = i + 1
-            else:
-                run_start = i
+            is_heading = b.kind == "heading"
+            run_start = i + 1 if is_heading else i
             j = run_start
             pseudocode_count = 0
             saw_term = False
@@ -1086,6 +1083,8 @@ def detect_algorithms(blocks: list[Block]) -> list[Block]:
                     saw_term = False
                 j += 1
             if pseudocode_count >= 2 and j > run_start:
+                if is_heading:
+                    out.append(b)
                 merged = Block("algorithm", blocks[run_start].page,
                                region=blocks[run_start].region,
                                y0=blocks[run_start].y0)
