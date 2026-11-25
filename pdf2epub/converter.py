@@ -340,6 +340,9 @@ def _build_xref_targets(blocks: list[Block], chapters: list[dict], ctx: RenderCt
         if b.kind == "para" and b.lines:
             first_text = " ".join(s.text for s in b.lines[0].spans).strip()
             m = _CAPTION_NUM.match(first_text)
+            if not m and len(first_text) < 5 and len(b.lines) > 1:
+                first_text = " ".join(s.text for s in b.lines[1].spans).strip()
+                m = _CAPTION_NUM.match(first_text)
             if m:
                 kind = _canon(m.group(1))
                 num = m.group(2)
