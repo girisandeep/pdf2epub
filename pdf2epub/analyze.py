@@ -565,6 +565,22 @@ def _fix_numbered_heading_levels(blocks: list[Block]) -> None:
         return
 
 
+def _collapse_heading_gaps(blocks: list[Block]) -> None:
+    """Ensure heading levels don't skip (h2 -> h4 becomes h2 -> h3)."""
+    headings = [(i, b) for i, b in enumerate(blocks) if b.kind == "heading"]
+    if not headings:
+        return
+    stack: list[tuple[int, int]] = []  # (original_level, collapsed_level)
+    for _, b in headings:
+        ol = b.level
+        while stack and stack[-1][0] >= ol:
+            stack.pop()
+        parent_cl = stack[-1][1] if stack else 0
+        cl = min(ol, parent_cl + 1)
+        b.level = cl
+        stack.append((ol, cl))
+
+
 def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters) -> list[Block]:
     body = st.body_size
     has_ml = any(l.ml_label for b in blocks for l in b.lines)
@@ -697,6 +713,7 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
             idx = nxt
         blocks.insert(idx, Block("heading", pno, level=max(1, min(lvl, 6)), synthetic_text=title, y0=dy or 0))
     _fix_numbered_heading_levels(blocks)
+    _collapse_heading_gaps(blocks)
     c.headings = sum(1 for b in blocks if b.kind == "heading")
     return blocks
 
