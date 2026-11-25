@@ -39,13 +39,27 @@ _STOP = {k: set(v.split()) for k, v in _STOP.items()}
 
 
 _PUA_RE = re.compile("[" + "".join(re.escape(k) for k in _PUA_MAP) + "]")
+_SPACED_URL = re.compile(r"^(\s*)(https?)\s*:\s+//\s*(.*)|^(\s*)(https?)\s+:\s*//\s*(.*)", re.DOTALL)
+_SPACED_URL_PATH = re.compile(r"^(\s*)//\s*(\S.*\.\s*\S.*)", re.DOTALL)
 
 
 def clean(text: str) -> str:
     text = text.replace("\u2010", "-").replace("\u2011", "-")
     text = _LIG_RE.sub(lambda m: _LIGS[m.group()], text)
     text = _PUA_RE.sub(lambda m: _PUA_MAP.get(m.group(), ""), text)
-    return _XML_BAD.sub("", text)
+    text = _XML_BAD.sub("", text)
+    m = _SPACED_URL.match(text)
+    if m:
+        if m.group(2) is not None:
+            lead, proto, rest = m.group(1), m.group(2), m.group(3)
+        else:
+            lead, proto, rest = m.group(4), m.group(5), m.group(6)
+        text = lead + proto + "://" + rest.replace(" ", "")
+    else:
+        m = _SPACED_URL_PATH.match(text)
+        if m:
+            text = m.group(1) + "//" + m.group(2).replace(" ", "")
+    return text
 
 
 def norm_key(text: str) -> str:

@@ -100,6 +100,9 @@ def line_segments(lines: list[Line], ctx: RenderCtx, strip_bold: bool = False) -
                     segs.pop()
                 segs.append(("\x00", ("nospace",)))   # and glue the next line on without a space
                 continue
+            if last.endswith(("https:", "http:")) and nxt.startswith("//"):
+                segs.append(("\x00", ("nospace",)))
+                continue
             segs.append((" ", (False, False, False, False, False, None)))
     # apply the "no space" markers
     out: list[Seg] = []
