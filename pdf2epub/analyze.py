@@ -718,7 +718,7 @@ def _try_merge(p: Block, b: Block, c: Counters) -> bool:
         return False
     pl_bold = pl.spans[-1].bold if pl.spans else pl.bold
     nl_bold = nl.spans[0].bold if nl.spans else nl.bold
-    if CAPTION_RE.match(b.text):
+    if CAPTION_RE.match(b.text) or CAPTION_RE.match(p.text):
         return False
     pend = p.text.rstrip()
     hy = pend.endswith(("-", "­"))
@@ -778,7 +778,7 @@ def merge_continuations(blocks: list[Block], c: Counters) -> list[Block]:
                     continue
         elif prev.kind == "table":
             p = _find_last_para(out)
-            if p is not None and p.text.rstrip().endswith(("-", "­")) and _try_merge(p, b, c):
+            if p is not None and _try_merge(p, b, c):
                 continue
         elif prev.kind == "para" and (
                 _short_fragment(prev) or _short_fragment(b)
