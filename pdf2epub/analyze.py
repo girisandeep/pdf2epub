@@ -828,6 +828,37 @@ def detect_naked_lists(blocks: list[Block], c: Counters) -> list[Block]:
     return blocks
 
 
+def detect_definition_lists(blocks: list[Block], c: Counters) -> list[Block]:
+    """Convert runs of 'bold term: description' paragraphs to list items."""
+    i, n = 0, len(blocks)
+    while i < n:
+        b = blocks[i]
+        if b.kind == "para" and _is_defn_entry(b):
+            start = i
+            while i < n and blocks[i].kind == "para" and _is_defn_entry(blocks[i]):
+                i += 1
+            if i - start >= 3:
+                c.lists += 1
+                for k in range(start, i):
+                    blocks[k].kind = "li"
+                    blocks[k].level = 0
+                    blocks[k].ordered = False
+            continue
+        i += 1
+    return blocks
+
+
+def _is_defn_entry(b: Block) -> bool:
+    if not b.lines or not b.lines[0].spans:
+        return False
+    s0 = b.lines[0].spans[0]
+    if not s0.bold or not s0.text.rstrip().endswith(":"):
+        return False
+    if len(b.lines[0].spans) < 2:
+        return False
+    return True
+
+
 def _strip_marker(b: Block) -> None:
     n = b.marker[1]
     first = b.lines[0]
