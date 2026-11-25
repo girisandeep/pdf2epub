@@ -676,7 +676,14 @@ def _try_merge(p: Block, b: Block, c: Counters) -> bool:
     lower = _starts_lower(b.text)
     if pl_bold != nl_bold and not (not term and lower):
         return False
+    weak_term = term and not pend.endswith((".", "?", "!"))
     if (hy and lower) or (not term and lower) or (not term and p.full_last and not b.indented_first):
+        p.lines += b.lines
+        p.full_last = b.full_last
+        p.region, p.page = b.region, b.page
+        c.merged_paragraphs += 1
+        return True
+    if lower and weak_term and len(b.text.strip()) < 20:
         p.lines += b.lines
         p.full_last = b.full_last
         p.region, p.page = b.region, b.page
