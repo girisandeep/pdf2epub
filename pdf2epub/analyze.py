@@ -1244,6 +1244,63 @@ _BIB_HEADING = re.compile(
 _BIB_MARKER = re.compile(r"^\s*\[(\d+)\]\s*")
 _BIB_ALPHA_MARKER = re.compile(r"^\s*\[([A-Z][A-Za-z+\d]{1,20})\]\s*")
 _BIB_DOT_MARKER = re.compile(r"^\s*(\d{1,4})\.\s+")
+_BIB_YEAR = re.compile(r"\b((?:19|20)\d{2}[a-z]?)\b")
+
+
+_BIB_AUTHOR_START = re.compile(
+    r"^[A-ZÀ-ɏ][\wÀ-ɏ .'-]+,"
+)
+
+
+def _bib_author_key(text: str) -> str:
+    """Extract 'lastname-year' key from an author-year bibliography entry."""
+    m = re.match(r"\s*([A-Z][a-zÀ-ɏ]+)", text)
+    name = m.group(1).lower() if m else "ref"
+    ym = _BIB_YEAR.search(text[:200])
+    year = ym.group(1) if ym else ""
+    return f"{name}{year}"
+
+
+def _format_bib_authoryear(blocks: list[Block], ref_idx: int, section_id: int, n: int) -> bool:
+    """Detect author-year bibliography entries (no markers) and format as list items."""
+    entries: list[int] = []
+    for i in range(ref_idx + 1, n):
+        b = blocks[i]
+        if b.kind == "heading":
+            break
+        if b.kind != "para":
+            continue
+        t = b.text.strip()
+        if _BIB_AUTHOR_START.match(t) and _BIB_YEAR.search(t[:250]):
+            entries.append(i)
+    if len(entries) < 5:
+        return False
+    entry_set = set(entries)
+    seen_keys: dict[str, int] = {}
+    for i in entries:
+        b = blocks[i]
+        b.kind = "li"
+        b.ordered = False
+        b.number = None
+        b.level = 1
+        key = _bib_author_key(b.text)
+        cnt = seen_keys.get(key, 0)
+        seen_keys[key] = cnt + 1
+        b.anchor = f"bib{section_id}-{key}" if cnt == 0 else f"bib{section_id}-{key}-{cnt}"
+    bib_start, bib_end = entries[0], entries[-1] + 1
+    for i in range(bib_start, bib_end):
+        b = blocks[i]
+        if i in entry_set or b.kind != "para":
+            continue
+        prev_li = None
+        for j in range(i - 1, bib_start - 1, -1):
+            if blocks[j].kind == "li":
+                prev_li = blocks[j]
+                break
+        if prev_li is not None:
+            prev_li.lines.extend(b.lines)
+            b.kind = "_drop"
+    return True
 
 
 def _format_bib_section(blocks: list[Block], ref_idx: int, section_id: int) -> bool:
@@ -1263,7 +1320,7 @@ def _format_bib_section(blocks: list[Block], ref_idx: int, section_id: int) -> b
             dot_count += 1
     best = max(numeric_count, alpha_count, dot_count)
     if best == 0:
-        return False
+        return _format_bib_authoryear(blocks, ref_idx, section_id, n)
     if numeric_count >= best:
         marker_re = _BIB_MARKER
     elif alpha_count >= best:
