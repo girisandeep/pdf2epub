@@ -14,7 +14,7 @@
   "paras": 100,
   "precision": 0.9402,
   "recall": 0.8814,
-  "secs": 4.9,
+  "secs": 4.7,
   "tables": 0,
   "valid": true
  },
@@ -52,7 +52,7 @@
   "paras": 209,
   "precision": 0.986,
   "recall": 0.9708,
-  "secs": 5.5,
+  "secs": 5.7,
   "tables": 6,
   "valid": true
  },
@@ -71,7 +71,7 @@
   "paras": 443,
   "precision": 0.9956,
   "recall": 0.9964,
-  "secs": 33.0,
+  "secs": 32.4,
   "tables": 54,
   "valid": true
  },
@@ -90,7 +90,7 @@
   "paras": 792,
   "precision": 0.9995,
   "recall": 0.9911,
-  "secs": 13.5,
+  "secs": 12.8,
   "tables": 4,
   "valid": true
  },
@@ -109,7 +109,7 @@
   "paras": 150,
   "precision": 0.995,
   "recall": 0.9809,
-  "secs": 6.6,
+  "secs": 6.7,
   "tables": 16,
   "valid": true
  },
@@ -128,7 +128,7 @@
   "paras": 2616,
   "precision": 0.9989,
   "recall": 0.9755,
-  "secs": 34.8,
+  "secs": 33.8,
   "tables": 8,
   "valid": true
  },
@@ -147,7 +147,7 @@
   "paras": 124,
   "precision": 0.9487,
   "recall": 0.9408,
-  "secs": 6.8,
+  "secs": 6.7,
   "tables": 0,
   "valid": true
  },
@@ -166,7 +166,7 @@
   "paras": 189,
   "precision": 0.9972,
   "recall": 0.9983,
-  "secs": 6.3,
+  "secs": 5.8,
   "tables": 0,
   "valid": true
  },
@@ -185,7 +185,7 @@
   "paras": 455,
   "precision": 0.998,
   "recall": 0.9988,
-  "secs": 12.4,
+  "secs": 11.8,
   "tables": 2,
   "valid": true
  }

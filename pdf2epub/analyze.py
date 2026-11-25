@@ -523,6 +523,41 @@ def list_marker_bullet(text: str) -> bool:
     return bool(m and m[0] == "bullet")
 
 
+def _fix_numbered_heading_levels(blocks: list[Block]) -> None:
+    """Adjust heading levels so section numbering depth is reflected in the hierarchy.
+
+    E.g. if "3 Results" is h1 and "3.1.1 Language Modeling" was assigned h2 by style
+    propagation, bump it to h3 because numbering depth 2 is two levels below depth 0.
+    """
+    numbered: list[tuple[Block, int]] = []
+    for b in blocks:
+        if b.kind != "heading":
+            continue
+        m = NUMBERED_RE.match(b.text)
+        if m:
+            depth = m.group(1).strip(".").count(".")
+            numbered.append((b, depth))
+    if len(numbered) < 3:
+        return
+    depths = {d for _, d in numbered}
+    if len(depths) < 2:
+        return
+    min_depth = min(depths)
+    levels_at_min = [b.level for b, d in numbered if d == min_depth]
+    if not levels_at_min:
+        return
+    base_level = min(levels_at_min)
+    changed = 0
+    for b, depth in numbered:
+        ideal = base_level + (depth - min_depth)
+        ideal = max(1, min(ideal, 6))
+        if ideal != b.level:
+            b.level = ideal
+            changed += 1
+    if not changed:
+        return
+
+
 def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters) -> list[Block]:
     body = st.body_size
     has_ml = any(l.ml_label for b in blocks for l in b.lines)
@@ -648,6 +683,7 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
             nxt = next((i for i, b in enumerate(blocks) if b.page > pno), len(blocks))
             idx = nxt
         blocks.insert(idx, Block("heading", pno, level=max(1, min(lvl, 6)), synthetic_text=title, y0=dy or 0))
+    _fix_numbered_heading_levels(blocks)
     c.headings = sum(1 for b in blocks if b.kind == "heading")
     return blocks
 
