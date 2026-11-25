@@ -662,9 +662,13 @@ def _find_last_para(out: list[Block]) -> Block | None:
     return None
 
 
+def _max_span_size(line: Line) -> float:
+    return max((s.size for s in line.spans if s.text.strip()), default=line.size)
+
+
 def _try_merge(p: Block, b: Block, c: Counters) -> bool:
     pl, nl = p.lines[-1], b.lines[0]
-    if abs(pl.size - nl.size) > 0.8:
+    if abs(_max_span_size(pl) - _max_span_size(nl)) > 0.8:
         return False
     pl_bold = pl.spans[-1].bold if pl.spans else pl.bold
     nl_bold = nl.spans[0].bold if nl.spans else nl.bold
