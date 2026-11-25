@@ -427,7 +427,7 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id) -> list[st
                                 f'role="img" style="width:{w:.2f}em"/></div>')
             elif href:
                 cap = inline_html(b.caption, ctx) if b.caption else ""
-                alt = escape(_plain(b.caption, ctx))[:200] if b.caption else ""
+                alt = escape(_plain(b.caption, ctx))[:200] if b.caption else "Figure"
                 fig = f'<img src="{href}" alt="{alt}" role="img"/>'
                 if cap:
                     fig += f"<figcaption>{cap}</figcaption>"

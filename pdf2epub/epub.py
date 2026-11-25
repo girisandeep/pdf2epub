@@ -9,7 +9,7 @@ from xml.sax.saxutils import escape
 
 CSS = """\
 html { font-size: 100%; }
-body { font-family: Georgia, "Times New Roman", serif; line-height: 1.45; margin: 5%; text-align: left; hyphens: auto; -webkit-hyphens: auto; }
+body { font-family: Georgia, "Times New Roman", serif; line-height: 1.45; margin: 5%; text-align: left; hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; }
 h1, h2, h3, h4, h5, h6 { font-family: Helvetica, Arial, sans-serif; line-height: 1.2; margin: 1.6em 0 .6em; page-break-after: avoid; break-after: avoid; }
 h1 { font-size: 1.8em; margin-top: 2em; } h2 { font-size: 1.45em; } h3 { font-size: 1.2em; } h4, h5, h6 { font-size: 1.05em; }
 p { margin: 0 0 .85em; orphans: 2; widows: 2; }
