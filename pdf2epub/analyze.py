@@ -738,12 +738,14 @@ def _try_merge(p: Block, b: Block, c: Counters) -> bool:
         return False
     pl_bold = pl.spans[-1].bold if pl.spans else pl.bold
     nl_bold = nl.spans[0].bold if nl.spans else nl.bold
-    if CAPTION_RE.match(b.text) or CAPTION_RE.match(p.text):
-        return False
     pend = p.text.rstrip()
     hy = pend.endswith(("-", "­"))
     term = pend.endswith(TERMINAL)
     lower = _starts_lower(b.text)
+    if CAPTION_RE.match(b.text):
+        return False
+    if CAPTION_RE.match(p.text) and not (hy and lower):
+        return False
     if pl_bold != nl_bold and not (not term and lower):
         return False
     weak_term = term and not pend.endswith((".", "?", "!"))
