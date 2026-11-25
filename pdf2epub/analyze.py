@@ -1011,16 +1011,18 @@ def _drop_figure_labels(blocks: list[Block], drop: set[int]) -> None:
 
 
 def _drop_table_annotations(blocks: list[Block], drop: set[int], body_size: float) -> None:
-    """Drop short, small-font paragraphs adjacent to tables (escaped table content)."""
+    """Drop short, small-font paragraphs adjacent to tables or images (escaped content)."""
     if body_size <= 0:
         return
-    table_pages: dict[int, list[int]] = {}
+    anchor_pages: dict[int, list[int]] = {}
     for i, b in enumerate(blocks):
-        if b.kind == "table" and i not in drop:
-            table_pages.setdefault(b.page, []).append(i)
-    threshold = body_size * 0.78
+        if i in drop:
+            continue
+        if b.kind == "table" or (b.kind == "image" and b.image and b.image.kind != "equation"):
+            anchor_pages.setdefault(b.page, []).append(i)
+    threshold = body_size * 0.85
     for i, b in enumerate(blocks):
-        if i in drop or b.kind != "para" or b.page not in table_pages:
+        if i in drop or b.kind != "para" or b.page not in anchor_pages:
             continue
         t = b.text.strip()
         if len(t) >= 40 or t.rstrip().endswith(TERMINAL):
@@ -1028,7 +1030,7 @@ def _drop_table_annotations(blocks: list[Block], drop: set[int], body_size: floa
         avg = _avg_span_size(b)
         if avg >= threshold:
             continue
-        near = any(abs(i - ti) <= 5 for ti in table_pages[b.page])
+        near = any(abs(i - ai) <= 5 for ai in anchor_pages[b.page])
         if near:
             drop.add(i)
 
