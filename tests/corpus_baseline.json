@@ -119,7 +119,7 @@
   "eq": 11,
   "footnotes": 2,
   "frag_pct": 1.4,
-  "headings": 270,
+  "headings": 249,
   "images": 28,
   "lists": 88,
   "mathjunk": 2,
@@ -127,7 +127,7 @@
   "pages": 244,
   "paras": 2589,
   "precision": 0.9989,
-  "recall": 0.979,
+  "recall": 0.9792,
   "secs": 40.1,
   "tables": 8,
   "valid": true

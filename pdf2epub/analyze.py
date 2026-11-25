@@ -590,6 +590,26 @@ def _fix_numbered_heading_levels(blocks: list[Block]) -> None:
         return
 
 
+_CHAPTER_LABEL = re.compile(
+    r"^\s*(?:chapter|part|appendix|annex|teil|kapitel|chapitre|capitulo)\s+"
+    r"(?:\d+|[IVXLC]+|[A-Z])\s*$", re.I)
+
+
+def _merge_chapter_headings(blocks: list[Block]) -> None:
+    """Merge 'Chapter N' + 'Title' consecutive same-level headings into one."""
+    to_remove: list[int] = []
+    for i in range(len(blocks) - 1):
+        a, b = blocks[i], blocks[i + 1]
+        if (a.kind == "heading" and b.kind == "heading"
+                and a.level == b.level and a.page == b.page
+                and _CHAPTER_LABEL.match(a.text)):
+            b.synthetic_text = a.text.strip() + ": " + (b.synthetic_text or b.text).strip()
+            b.anchor = b.anchor or a.anchor
+            to_remove.append(i)
+    for i in reversed(to_remove):
+        del blocks[i]
+
+
 def _collapse_heading_gaps(blocks: list[Block]) -> None:
     """Ensure heading levels don't skip (h2 -> h4 becomes h2 -> h3)."""
     headings = [(i, b) for i, b in enumerate(blocks) if b.kind == "heading"]
@@ -739,6 +759,7 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
         blocks.insert(idx, Block("heading", pno, level=max(1, min(lvl, 6)), synthetic_text=title, y0=dy or 0))
     _fix_numbered_heading_levels(blocks)
     _collapse_heading_gaps(blocks)
+    _merge_chapter_headings(blocks)
     c.headings = sum(1 for b in blocks if b.kind == "heading")
     return blocks
 
