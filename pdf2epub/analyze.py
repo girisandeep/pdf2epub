@@ -835,6 +835,13 @@ def merge_continuations(blocks: list[Block], c: Counters) -> list[Block]:
             out[-1].full_last = b.full_last
             c.merged_paragraphs += 1
             continue
+        if b.kind == "code" and out and out[-1].kind == "code" \
+                and b.page != out[-1].page:
+            out[-1].lines += b.lines
+            out[-1].full_last = b.full_last
+            out[-1].page = b.page
+            c.merged_paragraphs += 1
+            continue
         if b.kind != "para" or b.marker is not None or not out:
             out.append(b)
             continue
