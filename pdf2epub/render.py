@@ -486,7 +486,7 @@ def _render_list(items: list[Block], ctx: RenderCtx) -> str:
         first = items[i]
         tag = "ol" if first.ordered else "ul"
         attr = f' start="{first.number}"' if tag == "ol" and first.number and first.number != 1 else ""
-        if first.anchor and first.anchor.startswith("bib-"):
+        if first.anchor and first.anchor.startswith("bib"):
             attr += ' role="doc-bibliography"'
         out = [f"<{tag}{attr}>"]
         while i < n and items[i].level == level and items[i].ordered == first.ordered:

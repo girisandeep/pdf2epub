@@ -268,6 +268,62 @@ def _grid_from_words(words, bbox) -> Optional[list[list[str]]]:
     return [[clean(c) for c in r] for r in rows]
 
 
+def _ruled_tables(page: pymupdf.Page, words, area: float) -> list[TableItem]:
+    """Detect booktabs-style tables from horizontal rules + word geometry."""
+    pw = page.rect.width
+    rules: list[tuple[float, float, float]] = []  # (y, x0, x1)
+    for path in page.get_drawings():
+        for item in path.get("items", []):
+            if item[0] == "l":
+                p1, p2 = item[1], item[2]
+                if abs(p1.y - p2.y) < 2 and abs(p2.x - p1.x) > 0.3 * pw:
+                    rules.append((round((p1.y + p2.y) / 2, 1), min(p1.x, p2.x), max(p1.x, p2.x)))
+            elif item[0] == "re":
+                r = item[1]
+                if abs(r.y1 - r.y0) < 2 and abs(r.x1 - r.x0) > 0.3 * pw:
+                    rules.append((round((r.y0 + r.y1) / 2, 1), r.x0, r.x1))
+    if len(rules) < 2:
+        return []
+    rules.sort()
+    groups: list[list[tuple[float, float, float]]] = [[rules[0]]]
+    for r in rules[1:]:
+        prev = groups[-1][-1]
+        x_overlap = min(r[2], prev[2]) - max(r[1], prev[1])
+        same_extent = x_overlap > 0.5 * min(r[2] - r[1], prev[2] - prev[1])
+        if same_extent:
+            groups[-1].append(r)
+        else:
+            groups.append([r])
+    out: list[TableItem] = []
+    for g in groups:
+        if len(g) < 2:
+            continue
+        y0, y1 = g[0][0] - 2, g[-1][0] + 2
+        x_all = [w[0] for w in words if y0 <= (w[1] + w[3]) / 2 <= y1] + \
+                [w[2] for w in words if y0 <= (w[1] + w[3]) / 2 <= y1]
+        if not x_all:
+            continue
+        bbox = (min(x_all) - 1, y0, max(x_all) + 1, y1)
+        if _area(bbox) > 0.92 * area:
+            continue
+        grid = _grid_from_words(words, bbox)
+        if not grid or len(grid) < 2 or max(len(r) for r in grid) < 2:
+            continue
+        cells = [c for r in grid for c in r]
+        if sum(1 for c in cells if c) < 0.4 * len(cells):
+            continue
+        ncols = max(len(r) for r in grid)
+        filled_cols = sum(1 for ci in range(ncols) if sum(1 for r in grid if ci < len(r) and r[ci]) >= 2)
+        if filled_cols < 2:
+            continue
+        all_text = [c for r in grid for c in r if c]
+        avg_len = sum(len(c) for c in all_text) / max(len(all_text), 1)
+        if ncols <= 2 and avg_len > 40:
+            continue
+        out.append(TableItem(bbox=bbox, page=page.number, rows=grid))
+    return out
+
+
 def _extract_tables(page: pymupdf.Page, area: float) -> list[TableItem]:
     out: list[TableItem] = []
     try:
@@ -275,9 +331,9 @@ def _extract_tables(page: pymupdf.Page, area: float) -> list[TableItem]:
     except Exception as e:  # pragma: no cover
         log.debug("find_tables failed on page %d: %s", page.number, e)
         return out
-    if not found.tables:
-        return out
     words = page.get_text("words")
+    if not found.tables:
+        return _ruled_tables(page, words, area)
     for t in found.tables:
         try:
             rows, multiline = [], False
@@ -308,6 +364,9 @@ def _extract_tables(page: pymupdf.Page, area: float) -> list[TableItem]:
         if _area(bb) > 0.92 * area:
             continue
         out.append(TableItem(bbox=bb, page=page.number, rows=rows))
+    for rt in _ruled_tables(page, words, area):
+        if not any(_overlap(rt.bbox, t.bbox) > 0.3 * _area(rt.bbox) for t in out):
+            out.append(rt)
     return out
 
 
