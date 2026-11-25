@@ -16,7 +16,7 @@ p { margin: 0 0 .85em; orphans: 2; widows: 2; }
 p.quote { margin-left: 1.5em; margin-right: 1.5em; }
 ul, ol { margin: 0 0 .9em; padding-left: 1.6em; } li { margin: 0 0 .3em; }
 dl { margin: 0 0 .9em; } dt { font-weight: bold; margin: .5em 0 .15em; } dd { margin: 0 0 .3em 1.2em; }
-pre { font-family: Menlo, Consolas, "Courier New", monospace; font-size: .85em; line-height: 1.3; background: #f5f5f5; padding: .6em .8em; margin: 0 0 1em; white-space: pre-wrap; overflow-wrap: anywhere; border-radius: 3px; }
+pre { font-family: Menlo, Consolas, "Courier New", monospace; font-size: .85em; line-height: 1.3; background: #f5f5f5; padding: .6em .8em; margin: 0 0 1em; white-space: pre-wrap; overflow-wrap: anywhere; border-radius: 3px; page-break-inside: avoid; break-inside: avoid; }
 code { font-family: Menlo, Consolas, "Courier New", monospace; font-size: .9em; }
 pre code { font-size: 1em; }
 figure { margin: 1.2em 0; text-align: center; page-break-inside: avoid; break-inside: avoid; }
@@ -24,7 +24,7 @@ figure img { max-width: 100%; height: auto; }
 div.equation.mathml { position: relative; } span.eqno { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
 div.equation { text-align: center; margin: .9em 0; } img.equation { max-width: 100%; height: auto; vertical-align: middle; }
 figcaption { font-size: .88em; font-style: italic; margin-top: .4em; text-align: center; }
-table { border-collapse: collapse; margin: 1em auto; max-width: 100%; font-size: .9em; word-break: break-word; }
+table { border-collapse: collapse; margin: 1em auto; max-width: 100%; font-size: .9em; word-break: break-word; page-break-inside: avoid; break-inside: avoid; }
 caption { font-weight: bold; margin-bottom: .4em; text-align: left; }
 th, td { border: 1px solid #999; padding: .25em .5em; vertical-align: top; }
 th { background: #eee; } td.num { text-align: right; }
