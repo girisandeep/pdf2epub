@@ -804,16 +804,21 @@ def detect_naked_lists(blocks: list[Block], c: Counters) -> list[Block]:
     while i < n:
         b = blocks[i]
         if b.kind == "heading" and _NAKED_LIST_HEADING.match(b.text.strip()):
+            hlevel = b.level
             j = i + 1
+            # skip sub-headings (may be false positives from bold style propagation)
+            while j < n and blocks[j].kind == "heading" and blocks[j].level > hlevel:
+                j += 1
+            start = j
             while j < n and blocks[j].kind == "para" and len(blocks[j].lines) <= 2:
                 t = blocks[j].text.strip()
                 if not t or len(t) > 120:
                     break
                 j += 1
-            run_len = j - (i + 1)
+            run_len = j - start
             if run_len >= 3:
                 c.lists += 1
-                for k in range(i + 1, j):
+                for k in range(start, j):
                     blocks[k].kind = "li"
                     blocks[k].level = 0
                     blocks[k].ordered = False
