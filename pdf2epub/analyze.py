@@ -1134,9 +1134,10 @@ def detect_algorithms(blocks: list[Block]) -> list[Block]:
 
 # ------------------------------------------------------------------ bibliography
 
-_BIB_HEADING = re.compile(r"^(references|bibliography|works cited|cited literature|literaturverzeichnis)$", re.I)
+_BIB_HEADING = re.compile(r"^(references|bibliography|works cited|cited literature|literaturverzeichnis|endnotes)$", re.I)
 _BIB_MARKER = re.compile(r"^\s*\[(\d+)\]\s*")
 _BIB_ALPHA_MARKER = re.compile(r"^\s*\[([A-Z][A-Za-z+\d]{1,20})\]\s*")
+_BIB_DOT_MARKER = re.compile(r"^\s*(\d{1,4})\.\s+")
 
 
 def format_bibliography(blocks: list[Block]) -> list[Block]:
@@ -1150,8 +1151,8 @@ def format_bibliography(blocks: list[Block]) -> list[Block]:
     if ref_idx is None:
         return blocks
 
-    # Detect marker style: [N] numeric or [ABC+YY] alphabetic
-    numeric_count, alpha_count = 0, 0
+    # Detect marker style: [N] numeric, [ABC+YY] alphabetic, or N. dot-numeric
+    numeric_count, alpha_count, dot_count = 0, 0, 0
     for i in range(ref_idx + 1, min(ref_idx + 20, len(blocks))):
         if blocks[i].kind != "para":
             continue
@@ -1159,8 +1160,18 @@ def format_bibliography(blocks: list[Block]) -> list[Block]:
             numeric_count += 1
         elif _BIB_ALPHA_MARKER.match(blocks[i].text):
             alpha_count += 1
-    marker_re = _BIB_MARKER if numeric_count >= alpha_count else _BIB_ALPHA_MARKER
-    is_numeric = marker_re is _BIB_MARKER
+        elif _BIB_DOT_MARKER.match(blocks[i].text):
+            dot_count += 1
+    best = max(numeric_count, alpha_count, dot_count)
+    if best == 0:
+        return blocks
+    if numeric_count >= best:
+        marker_re = _BIB_MARKER
+    elif alpha_count >= best:
+        marker_re = _BIB_ALPHA_MARKER
+    else:
+        marker_re = _BIB_DOT_MARKER
+    is_numeric = marker_re is not _BIB_ALPHA_MARKER
 
     # Collect marked paragraphs after the heading.  Tolerate non-matching paragraphs
     # (continuation lines mis-merged with the next entry) and small gaps in numbering.
