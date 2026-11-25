@@ -20,6 +20,7 @@ _NAKED_LIST_HEADING = re.compile(
     r"|related pages|related topics|voir aussi|siehe auch|véase también"
     r"|voci correlate|enlaces externos|liens externes|weblinks)$", re.I)
 FN_SYMBOLS = "*†‡§¶∗⋆★"
+_LATEX_TOC_JUNK = re.compile(r"bold0mu\s+mumu\s+\d{4}/\d{2}/\d{2}\s+ver:\s+[\d.]+\s+\w+\s+package")
 FN_MARK_RE = re.compile(rf"^\s*(\d{{1,3}}|[{FN_SYMBOLS}])(?=[\s)\]]|\.\D|\.$|$)")
 FN_SUP_RE = re.compile(rf"^(\d{{1,3}}|[{FN_SYMBOLS}])$")
 
@@ -583,6 +584,8 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
         c.heading_source = "outline"
         base_level = min(e[0] for e in toc)
         for lvl, title, pg, dest in toc:
+            title = _LATEX_TOC_JUNK.sub("", title).strip()
+            title = re.sub(r"\s{2,}", " ", title)
             pno = pg - 1
             lvl = lvl - base_level + 1
             if pno < 0:
