@@ -480,7 +480,6 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id,
             if body:
                 plain = b.text.replace("�", "").strip() if b.text else ""
                 if prev_eq and len(plain) < 20 and not re.match(r"[a-z]{3,}", plain.lower()):
-                    html.append(f'<span class="eq-alt">{escape(plain)}</span>')
                     _collapsed_eq_frag = True
                 else:
                     cls = ""
@@ -527,15 +526,12 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id,
                     tag = f'<span class="eqno">{escape(no)}</span>' if no else ""
                     html.append(f'<div class="equation mathml"{aid}>{mathml}{tag}</div>')
                 else:
-                    alt_span = f'<span class="eq-alt">{escape(im.alt[:300])}</span>' if im.alt else ""
                     html.append(f'<div class="equation"{aid}><img class="equation" src="{href}" alt={quoteattr(im.alt[:300])} '
-                                f'role="img" style="width:{w:.2f}em"/>{alt_span}</div>')
+                                f'role="img" style="width:{w:.2f}em"/></div>')
             elif href:
                 cap = inline_html(b.caption, ctx) if b.caption else ""
                 alt = quoteattr(_plain(b.caption, ctx)[:200] if b.caption else (im.alt[:200] if im.alt else "Figure"))
                 fig = f'<img src="{href}" alt={alt} role="img"/>'
-                if im.alt and im.alt != "Figure":
-                    fig += f'<span class="eq-alt">{escape(im.alt[:600])}</span>'
                 if cap:
                     fig += f"<figcaption>{cap}</figcaption>"
                 html.append(f"<figure{aid}>{fig}</figure>")
