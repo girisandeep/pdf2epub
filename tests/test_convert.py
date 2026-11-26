@@ -24,6 +24,7 @@ def pdfs(tmp_path_factory):
     make_pdfs.crossrefs(str(d / "crossrefs.pdf"))
     make_pdfs.bibliography(str(d / "bibliography.pdf"))
     make_pdfs.algorithm(str(d / "algorithm.pdf"))
+    make_pdfs.multi_author(str(d / "multi_author.pdf"))
     return d
 
 
@@ -325,3 +326,15 @@ def test_page_list_and_metadata(pdfs):
         for b in breaks:
             assert b.get("role") == "doc-pagebreak"
             assert b.get("id", "").startswith("pg-")
+
+
+def test_multi_author_extraction(pdfs):
+    _, _, z = run(pdfs, "multi_author")
+    OPF_NS = {"opf": "http://www.idpf.org/2007/opf", "dc": "http://purl.org/dc/elements/1.1/"}
+    opf = etree.fromstring(z.read("OEBPS/content.opf"))
+    creator = opf.xpath("//dc:creator/text()", namespaces=OPF_NS)
+    assert creator, "dc:creator missing"
+    names = [n.strip() for n in creator[0].split(",")]
+    assert "Alice Smith" in names
+    assert "Bob Jones" in names
+    assert "Carol Williams" in names

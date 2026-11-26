@@ -125,12 +125,18 @@ def _parse_pdf_date(s: str) -> Optional[str]:
     return f"{y}-{mo}-{d}"
 
 
+_GENERIC_AUTHOR = {"anonymous", "unknown", "none", "author", "user", "owner",
+                    "unspecified", "default", "admin", "administrator"}
+
+
 def _valid_meta_author(s: str) -> bool:
     if not s or len(s) < 3:
         return False
     if _META_AUTHOR_BAD.search(s):
         return False
     if not any(c.isalpha() for c in s):
+        return False
+    if s.strip().lower() in _GENERIC_AUTHOR:
         return False
     return True
 

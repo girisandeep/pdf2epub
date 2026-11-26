@@ -245,3 +245,24 @@ def algorithm(path: str) -> None:
     c.setFont("Times-Roman", 11)
     c.drawString(72, y, "The algorithm converges under standard assumptions.")
     c.save()
+
+
+def multi_author(path: str) -> None:
+    c = canvas.Canvas(path, pagesize=letter)
+    W, _ = letter
+    cx = W / 2
+    c.setFont("Helvetica-Bold", 18)
+    c.drawCentredString(cx, 700, "Multi-Author Extraction in Practice")
+    c.setFont("Times-Roman", 11)
+    c.drawCentredString(cx, 670, "Alice Smith")
+    c.drawCentredString(cx, 656, "Bob Jones")
+    c.drawCentredString(cx, 642, "Carol Williams")
+    c.setFont("Times-Roman", 9)
+    c.drawCentredString(cx, 622, "University of Testing")
+    c.drawCentredString(cx, 610, "alice@test.edu")
+    c.setFont("Helvetica-Bold", 13)
+    c.drawString(72, 580, "Abstract")
+    c.setFont("Times-Roman", 11)
+    c.drawString(72, 560, "This paper describes the extraction of author names from academic PDF documents.")
+    c.drawString(72, 545, LOREM)
+    c.save()
