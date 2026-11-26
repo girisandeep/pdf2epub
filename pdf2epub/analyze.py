@@ -278,9 +278,19 @@ def _right_edges(items, rst) -> dict[int, float]:
             by[it.region].append(it)
     out: dict[int, float] = {}
     for rid, ls in by.items():
+        groups: dict[tuple[float, float], list[float]] = defaultdict(list)
         for ln in ls:
-            peers = sorted(p.x1 for p in ls if abs(p.size - ln.size) < 0.5 and abs(p.x0 - ln.x0) < 4)
-            out[id(ln)] = peers[min(len(peers) - 1, int(len(peers) * 0.9))] if len(peers) >= 3 else rst[rid][1]
+            key = (round(ln.size * 2) / 2, round(ln.x0 / 4) * 4)
+            groups[key].append(ln.x1)
+        p90: dict[tuple[float, float], float] = {}
+        for key, xs in groups.items():
+            xs.sort()
+            p90[key] = xs[min(len(xs) - 1, int(len(xs) * 0.9))] if len(xs) >= 3 else -1.0
+        fallback = rst[rid][1]
+        for ln in ls:
+            key = (round(ln.size * 2) / 2, round(ln.x0 / 4) * 4)
+            v = p90[key]
+            out[id(ln)] = v if v > 0 else fallback
     return out
 
 

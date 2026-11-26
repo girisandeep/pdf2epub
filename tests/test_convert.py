@@ -338,3 +338,12 @@ def test_multi_author_extraction(pdfs):
     assert "Alice Smith" in names
     assert "Bob Jones" in names
     assert "Carol Williams" in names
+
+
+def test_abstract_as_description(pdfs):
+    _, _, z = run(pdfs, "multi_author")
+    OPF_NS = {"opf": "http://www.idpf.org/2007/opf", "dc": "http://purl.org/dc/elements/1.1/"}
+    opf = etree.fromstring(z.read("OEBPS/content.opf"))
+    desc = opf.xpath("//dc:description/text()", namespaces=OPF_NS)
+    assert desc, "dc:description missing"
+    assert "extraction of author names" in desc[0]

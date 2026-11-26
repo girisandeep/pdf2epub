@@ -262,6 +262,37 @@ def _authors_from_table(blocks: list[Block], title_idx: int, end_idx: int) -> li
     return []
 
 
+_ABSTRACT_HEAD = re.compile(r"^abstract\s*$", re.I)
+
+
+def _extract_abstract(blocks: list[Block]) -> Optional[str]:
+    """Extract the abstract text from the first page of an academic document."""
+    for i, b in enumerate(blocks):
+        if b.kind == "heading" and _ABSTRACT_HEAD.match(b.text.strip()):
+            parts = []
+            for j in range(i + 1, min(i + 20, len(blocks))):
+                nb = blocks[j]
+                if nb.kind == "heading":
+                    break
+                if nb.kind == "para":
+                    parts.append(nb.text.strip())
+            if parts:
+                abstract = " ".join(parts)
+                if len(abstract) > 2000:
+                    abstract = abstract[:1997] + "..."
+                return abstract
+            break
+        if b.kind == "para":
+            t = b.text.strip()
+            m = re.match(r"^abstract[\s.:—–-]+", t, re.I)
+            if m:
+                abstract = t[m.end():].strip()
+                if len(abstract) > 2000:
+                    abstract = abstract[:1997] + "..."
+                return abstract if len(abstract) >= 40 else None
+    return None
+
+
 def _clean_title(t: Optional[str]) -> Optional[str]:
     if not t:
         return None
@@ -544,7 +575,8 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
     if raw_author and not _valid_meta_author(raw_author):
         raw_author = ""
     author = opts.author or raw_author or None
-    description = (meta.get("subject") or "").strip() or None
+    raw_desc = (meta.get("subject") or "").strip()
+    description = raw_desc if raw_desc and raw_desc.lower() not in _GENERIC_AUTHOR and len(raw_desc) > 3 else None
     date = _parse_pdf_date(meta.get("creationDate"))
 
     # ---- 3. statistics & cleanup --------------------------------------------
@@ -588,6 +620,8 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConversionOpt
     blocks = A.merge_continuations(blocks, counters)
     if not author:
         author = _extract_authors(blocks, stats.body_size)
+    if not description:
+        description = _extract_abstract(blocks)
     blocks = A.merge_title_page(blocks)
     blocks = A.format_bibliography(blocks)
     blocks = A.build_lists(blocks, counters)

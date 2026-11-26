@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import Optional
 
 BBox = tuple[float, float, float, float]
@@ -54,7 +55,7 @@ class Line(Item):
     def text(self) -> str:
         return "".join(s.text for s in self.spans)
 
-    @property
+    @cached_property
     def size(self) -> float:
         w: dict[float, int] = {}
         for s in self.spans:
