@@ -71,7 +71,8 @@ def evaluate(args: tuple) -> dict:
                 continue
             tag = p.tag.rsplit("}", 1)[-1]
             is_li = tag in ("li", "dt", "dd")
-            paras.append(("".join(p.itertext()).strip(), len(p.xpath(".//x:sub|.//x:sup", namespaces=NS)), is_li))
+            nsubs = len(p.xpath(".//x:sub|.//x:sup[not(parent::x:a[contains(@*[local-name()='type'],'noteref')])]", namespaces=NS))
+            paras.append(("".join(p.itertext()).strip(), nsubs, is_li))
         stats["mathml"] += len(doc.xpath("//*[local-name()='math']"))
         stats["eq"] += len(doc.xpath("//x:img[@class='equation']", namespaces=NS))
     ref = toks(" ".join(p.get_text() for p in pymupdf.open(pdf)))

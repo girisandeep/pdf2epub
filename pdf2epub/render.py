@@ -407,6 +407,7 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id,
     html: list[str] = []
     seen_pages = {pg for pg, _ in page_map} if page_map is not None else set()
     last_page = -1
+    prev_eq = False
     i, n = 0, len(blocks)
     while i < n:
         b = blocks[i]
@@ -429,11 +430,14 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id,
             html.append(f'<h{b.level} id="{hid}">{text}</h{b.level}>')
         elif k == "para":
             sink: list[FootnoteDef] = []
-            body = inline_html(b.lines, ctx, footnote_sink=sink)
+            body = inline_html(b.lines, ctx, footnote_sink=sink).replace("�", "").strip()
             if body:
-                attrs = ""
+                cls = ""
                 if all(l.italic for l in b.lines) and len(b.lines) >= 2:
-                    attrs = ' class="quote"'
+                    cls = "quote"
+                elif prev_eq and b.text and b.text[0].islower():
+                    cls = "eq-cont"
+                attrs = f' class="{cls}"' if cls else ""
                 if b.anchor:
                     attrs += f' id="{b.anchor}"'
                 html.append(f"<p{attrs}>{body}</p>")
@@ -493,6 +497,7 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id,
             html.append(_render_toc(b, ctx))
         elif k == "index":
             html.append(_render_index(b))
+        prev_eq = k == "image" and b.image is not None and b.image.kind == "equation"
         i += 1
     return html
 
@@ -518,7 +523,7 @@ def _render_list(items: list[Block], ctx: RenderCtx) -> str:
                 out.append(sub)
             out.append("</li>")
         out.append(f"</{tag}>")
-        return "".join(out), i
+        return "\n".join(out), i
 
     parts, i = [], 0
     while i < n:
@@ -605,7 +610,7 @@ def _render_structured_table(b: Block, ctx: RenderCtx) -> str:
         if r == head_rows - 1 and head_rows:
             out.append("</thead>")
     out.append("</tbody></table>" if t.nrows > head_rows else "</table>")
-    return "".join(out)
+    return "\n".join(out)
 
 
 def _render_table(b: Block, ctx: RenderCtx) -> str:
@@ -639,7 +644,7 @@ def _render_table(b: Block, ctx: RenderCtx) -> str:
             row = "<thead>" + row + "</thead><tbody>"
         out.append(row)
     out.append("</tbody></table>" if header else "</table>")
-    s = "".join(out)
+    s = "\n".join(out)
     if not header:
         s = s.replace("<table>", "<table><tbody>", 1).replace("</table>", "</tbody></table>")
     return s

@@ -745,12 +745,12 @@ def _ml_formulas_figures(page: pymupdf.Page, regions, lines: list[Line], images:
             plain = sum(1 for l in members for w in re.findall(r"[A-Za-z]{4,}", l.text))
             if plain >= 9:                       # a paragraph the model mistook for a formula
                 continue
-            alt = re.sub(r"\s+", " ", " ".join(m.text.strip() for m in sorted(members, key=lambda m: (round(m.y0 / 3), m.x0))))
             bbox = r.bbox
             if members:
                 bbox = (min(r.bbox[0], *(m.x0 for m in members)), min(r.bbox[1], *(m.y0 for m in members)),
                         max(r.bbox[2], *(m.x1 for m in members)), max(r.bbox[3], *(m.y1 for m in members)))
-            img = _render(page, bbox, "equation", alt.replace("\ufffd", "").strip())
+            alt = re.sub(r"\s+", " ", " ".join(m.text.strip() for m in sorted(members, key=lambda m: (round(m.y0 / 3), m.x0)))).replace("\ufffd", "").strip()
+            img = _render(page, bbox, "equation", alt)
             img.latex = r.latex
             out.append(img)
             taken.update(id(m) for m in members)

@@ -131,8 +131,8 @@ def evaluate_epub(epub_path: str, ref: Counter) -> dict:
             for p in doc.xpath("//x:p|//x:li|//x:dd|//x:dt", namespaces=NS):
                 tag = p.tag.rsplit("}", 1)[-1]
                 is_li = tag in ("li", "dt", "dd")
-                paras.append(("".join(p.itertext()).strip(),
-                              len(p.xpath(".//x:sub|.//x:sup", namespaces=NS)), is_li))
+                nsubs = len(p.xpath(".//x:sub|.//x:sup[not(parent::x:a[contains(@*[local-name()='type'],'noteref')])]", namespaces=NS))
+                paras.append(("".join(p.itertext()).strip(), nsubs, is_li))
             for p in doc.xpath("//p|//li|//dd|//dt"):
                 txt = "".join(p.itertext()).strip()
                 if txt:
