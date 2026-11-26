@@ -854,10 +854,13 @@ def merge_continuations(blocks: list[Block], c: Counters) -> list[Block]:
         elif prev.kind == "image":
             p = _find_last_para(out)
             if p is not None:
-                if _try_merge(p, b, c):
+                gap = b.lines[0].y0 - p.lines[-1].y1 if b.lines and p.lines else 0
+                lsz = b.lines[0].size if b.lines else 12
+                fig_barrier = prev.image and prev.image.kind != "equation" and gap > 3 * lsz
+                if not fig_barrier and _try_merge(p, b, c):
                     continue
                 pt = p.text.rstrip()
-                if len(pt) < 50 and not pt.endswith(TERMINAL) and not CAPTION_RE.match(b.text):
+                if not fig_barrier and len(pt) < 50 and not pt.endswith(TERMINAL) and not CAPTION_RE.match(b.text):
                     p.lines += b.lines
                     p.full_last = b.full_last
                     p.region, p.page = b.region, b.page
