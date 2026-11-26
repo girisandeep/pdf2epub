@@ -127,6 +127,9 @@ def _lines_from_dict(d: dict, pno: int) -> list[Line]:
             spans = [sp for sp in (_span_from_dict(s) for s in l["spans"]) if sp]
             if not spans or not "".join(s.text for s in spans).strip():
                 continue
+            for k in range(1, len(spans)):
+                if _gap_needs_space(spans[k - 1], spans[k]):
+                    spans[k] = replace(spans[k], text=" " + spans[k].text)
             lines.append(Line(bbox=tuple(l["bbox"]), page=pno, spans=spans))
     return lines
 
