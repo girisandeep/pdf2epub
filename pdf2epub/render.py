@@ -429,18 +429,24 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id,
             hid = heading_id(b)
             html.append(f'<h{b.level} id="{hid}">{text}</h{b.level}>')
         elif k == "para":
+            _collapsed_eq_frag = False
             sink: list[FootnoteDef] = []
             body = inline_html(b.lines, ctx, footnote_sink=sink).replace("�", "").strip()
             if body:
-                cls = ""
-                if all(l.italic for l in b.lines) and len(b.lines) >= 2:
-                    cls = "quote"
-                elif prev_eq and b.text and b.text[0].islower():
-                    cls = "eq-cont"
-                attrs = f' class="{cls}"' if cls else ""
-                if b.anchor:
-                    attrs += f' id="{b.anchor}"'
-                html.append(f"<p{attrs}>{body}</p>")
+                plain = b.text.replace("�", "").strip() if b.text else ""
+                if prev_eq and len(plain) < 20 and not re.match(r"[a-z]{3,}", plain.lower()):
+                    html.append(f'<span class="eq-alt">{escape(plain)}</span>')
+                    _collapsed_eq_frag = True
+                else:
+                    cls = ""
+                    if all(l.italic for l in b.lines) and len(b.lines) >= 2:
+                        cls = "quote"
+                    elif prev_eq and b.text and b.text[0].islower():
+                        cls = "eq-cont"
+                    attrs = f' class="{cls}"' if cls else ""
+                    if b.anchor:
+                        attrs += f' id="{b.anchor}"'
+                    html.append(f"<p{attrs}>{body}</p>")
             for fn in sink:
                 html.append(_fn_aside(fn, ctx))
         elif k == "dl":
@@ -497,7 +503,10 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id,
             html.append(_render_toc(b, ctx))
         elif k == "index":
             html.append(_render_index(b))
-        prev_eq = k == "image" and b.image is not None and b.image.kind == "equation"
+        if k == "image" and b.image is not None and b.image.kind == "equation":
+            prev_eq = True
+        elif k != "para" or not _collapsed_eq_frag:
+            prev_eq = False
         i += 1
     return html
 
