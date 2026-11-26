@@ -706,6 +706,8 @@ def classify_headings(blocks: list[Block], toc: list, st: DocStats, c: Counters)
         keys: dict[tuple, list[Block]] = defaultdict(list)
         total = max(len([b for b in blocks if b.kind == "para"]), 1)
         for b in cands:
+            if any(l.ocr for l in b.lines):
+                continue
             size, bold = _bkey(b)
             t = b.text
             if CAPTION_RE.match(t) and size <= body * 1.25:

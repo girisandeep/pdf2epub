@@ -86,6 +86,7 @@ class OcrEngine:
             sp = Span(clean(text), max(h * 0.78, 4.0), bb, origin_y=bb[3] - h * 0.2)
             out.append(Line(bbox=bb, page=page.number, spans=[sp]))
         # box heights jitter with ascenders/descenders: snap near-median sizes to the median
+        # OCR has no font info so sizes beyond 2× median are noise, not real headings
         if out:
             sizes = sorted(l.spans[0].size for l in out)
             med = sizes[len(sizes) // 2]
@@ -93,6 +94,8 @@ class OcrEngine:
                 sp = l.spans[0]
                 if 0.72 * med <= sp.size <= 1.3 * med:
                     sp.size = med
+                elif sp.size > 2.0 * med:
+                    sp.size = med * 1.3
         return out
 
 
@@ -524,7 +527,7 @@ def _vector_figures(page: pymupdf.Page, lines: list[Line], tables: list[TableIte
         data, w, h = _render_clip(page, tuple(r + (-2, -2, 2, 2)))
         alt = " ".join(l.text.strip() for l in sorted(inside, key=lambda l: (round(l.y0 / 3), l.x0)) if l.text.strip())
         figs.append(ImageItem(bbox=tuple(r), page=page.number, data=data, ext="png", px_w=w, px_h=h,
-                              key=hashlib.sha1(data).hexdigest()[:16], kind="figure", alt=alt[:500]))
+                              key=hashlib.sha1(data).hexdigest()[:16], kind="figure", alt=alt[:1000]))
         lines[:] = [l for l in lines if l not in inside]
     return figs
 
@@ -807,6 +810,8 @@ def extract_page(doc: pymupdf.Document, pno: int, *, with_images: bool = True,
             try:
                 raw = ocr.page_lines(page)
                 pd.ocr = True
+                for l in raw:
+                    l.ocr = True
                 images = [i for i in images if i not in covers]   # the scan itself is replaced by text
             except Exception as e:
                 log.warning("OCR failed on page %d: %s", pno + 1, e)

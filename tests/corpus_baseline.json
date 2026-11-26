@@ -12,9 +12,9 @@
   "mathml": 0,
   "pages": 15,
   "paras": 105,
-  "precision": 0.9402,
-  "recall": 0.8836,
-  "secs": 4.8,
+  "precision": 0.9399,
+  "recall": 0.9077,
+  "secs": 5.0,
   "tables": 0,
   "valid": true
  },
@@ -33,7 +33,7 @@
   "paras": 117,
   "precision": 0.9824,
   "recall": 0.9491,
-  "secs": 4.7,
+  "secs": 4.8,
   "tables": 4,
   "valid": true
  },
@@ -50,8 +50,8 @@
   "mathml": 0,
   "pages": 16,
   "paras": 201,
-  "precision": 0.9871,
-  "recall": 0.9745,
+  "precision": 0.9863,
+  "recall": 0.9897,
   "secs": 5.5,
   "tables": 6,
   "valid": true
@@ -71,7 +71,7 @@
   "paras": 439,
   "precision": 0.9968,
   "recall": 0.9962,
-  "secs": 32.6,
+  "secs": 32.5,
   "tables": 54,
   "valid": true
  },
@@ -90,7 +90,7 @@
   "paras": 796,
   "precision": 0.9998,
   "recall": 0.991,
-  "secs": 13.9,
+  "secs": 13.5,
   "tables": 4,
   "valid": true
  },
@@ -107,9 +107,9 @@
   "mathml": 0,
   "pages": 12,
   "paras": 149,
-  "precision": 0.9949,
-  "recall": 0.9809,
-  "secs": 7.0,
+  "precision": 0.9928,
+  "recall": 0.993,
+  "secs": 6.8,
   "tables": 16,
   "valid": true
  },
@@ -126,9 +126,9 @@
   "mathml": 0,
   "pages": 244,
   "paras": 2588,
-  "precision": 0.9989,
-  "recall": 0.9792,
-  "secs": 34.6,
+  "precision": 0.9987,
+  "recall": 0.9811,
+  "secs": 34.7,
   "tables": 8,
   "valid": true
  },
@@ -145,8 +145,8 @@
   "mathml": 0,
   "pages": 14,
   "paras": 126,
-  "precision": 0.9525,
-  "recall": 0.9404,
+  "precision": 0.953,
+  "recall": 0.9653,
   "secs": 6.7,
   "tables": 0,
   "valid": true
@@ -166,7 +166,7 @@
   "paras": 187,
   "precision": 0.9979,
   "recall": 0.9983,
-  "secs": 6.1,
+  "secs": 6.0,
   "tables": 0,
   "valid": true
  },
@@ -185,7 +185,7 @@
   "paras": 454,
   "precision": 0.9982,
   "recall": 0.9988,
-  "secs": 11.9,
+  "secs": 11.8,
   "tables": 2,
   "valid": true
  }

@@ -1,8 +1,8 @@
 {
   "adam": {
     "pdf2epub": {
-      "recall": 0.8836,
-      "precision": 0.9402,
+      "recall": 0.9077,
+      "precision": 0.9399,
       "valid": true,
       "valid_errors": 0,
       "chapters": 8,
@@ -27,8 +27,8 @@
         "accessibility": true,
         "page_numbers": true
       },
-      "file_size_kb": 1342.1,
-      "secs": 2.9
+      "file_size_kb": 1342.4,
+      "secs": 3.0
     },
     "calibre": {
       "recall": 0.89,
@@ -57,8 +57,8 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 94.6,
-      "secs": 5.0
+      "file_size_kb": 196.8,
+      "secs": 1.5
     }
   },
   "attention": {
@@ -119,14 +119,14 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 217.3,
+      "file_size_kb": 313.7,
       "secs": 2.1
     }
   },
   "bert": {
     "pdf2epub": {
-      "recall": 0.9745,
-      "precision": 0.9871,
+      "recall": 0.9897,
+      "precision": 0.9863,
       "valid": true,
       "valid_errors": 0,
       "chapters": 9,
@@ -151,7 +151,7 @@
         "accessibility": true,
         "page_numbers": true
       },
-      "file_size_kb": 461.9,
+      "file_size_kb": 462.2,
       "secs": 3.1
     },
     "calibre": {
@@ -181,7 +181,7 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 95.5,
+      "file_size_kb": 192.4,
       "secs": 1.5
     }
   },
@@ -214,7 +214,7 @@
         "page_numbers": true
       },
       "file_size_kb": 6809.2,
-      "secs": 17.1
+      "secs": 17.0
     },
     "calibre": {
       "recall": 0.9935,
@@ -243,7 +243,7 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 6667.3,
+      "file_size_kb": 6680.6,
       "secs": 16.6
     }
   },
@@ -276,7 +276,7 @@
         "page_numbers": true
       },
       "file_size_kb": 821.6,
-      "secs": 6.6
+      "secs": 6.7
     },
     "calibre": {
       "recall": 0.9851,
@@ -305,14 +305,14 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 930.3,
-      "secs": 1.8
+      "file_size_kb": 1026.2,
+      "secs": 1.9
     }
   },
   "resnet": {
     "pdf2epub": {
-      "recall": 0.9809,
-      "precision": 0.9949,
+      "recall": 0.993,
+      "precision": 0.9928,
       "valid": true,
       "valid_errors": 0,
       "chapters": 7,
@@ -337,7 +337,7 @@
         "accessibility": true,
         "page_numbers": true
       },
-      "file_size_kb": 308.4,
+      "file_size_kb": 308.7,
       "secs": 3.4
     },
     "calibre": {
@@ -367,14 +367,14 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 40.2,
+      "file_size_kb": 38.9,
       "secs": 1.6
     }
   },
   "thinkpython": {
     "pdf2epub": {
-      "recall": 0.9792,
-      "precision": 0.9989,
+      "recall": 0.9811,
+      "precision": 0.9987,
       "valid": true,
       "valid_errors": 0,
       "chapters": 23,
@@ -399,8 +399,8 @@
         "accessibility": true,
         "page_numbers": true
       },
-      "file_size_kb": 488.4,
-      "secs": 20.1
+      "file_size_kb": 488.8,
+      "secs": 19.9
     },
     "calibre": {
       "recall": 0.9864,
@@ -429,14 +429,14 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 229.7,
-      "secs": 3.9
+      "file_size_kb": 216.8,
+      "secs": 3.7
     }
   },
   "vae": {
     "pdf2epub": {
-      "recall": 0.9404,
-      "precision": 0.9525,
+      "recall": 0.9653,
+      "precision": 0.953,
       "valid": true,
       "valid_errors": 0,
       "chapters": 7,
@@ -461,7 +461,7 @@
         "accessibility": true,
         "page_numbers": true
       },
-      "file_size_kb": 3817.6,
+      "file_size_kb": 3817.8,
       "secs": 3.2
     },
     "calibre": {
@@ -491,8 +491,8 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 3072.4,
-      "secs": 6.8
+      "file_size_kb": 2955.5,
+      "secs": 6.9
     }
   },
   "wiki_de": {
@@ -553,7 +553,7 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 324.7,
+      "file_size_kb": 433.0,
       "secs": 1.1
     }
   },
@@ -615,7 +615,7 @@
         "accessibility": false,
         "page_numbers": false
       },
-      "file_size_kb": 498.0,
+      "file_size_kb": 618.4,
       "secs": 1.8
     }
   }

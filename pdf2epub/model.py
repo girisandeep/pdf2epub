@@ -48,6 +48,7 @@ class Line(Item):
     spans: list[Span] = field(default_factory=list)
     ml_label: str = ""          # layout-model label of the region containing this line
     ml_id: int = -1             # id of that region (-1: none / ML off)
+    ocr: bool = False           # line was produced by OCR, font metrics unreliable
 
     @property
     def text(self) -> str:
