@@ -169,36 +169,56 @@ def _extract_authors(blocks: list[Block], body_size: float) -> Optional[str]:
         if _SECTION_START.match(t):
             end_idx = i
             break
-        if b.kind == "para" and len(t) >= 120:
+        if b.kind == "para" and len(t) >= 120 and not _INSTITUTION_RE.search(t) and "@" not in t:
             end_idx = i
             break
     if end_idx is None:
         end_idx = min(title_idx + 25, len(blocks))
+    _PARTICLES = {"de", "di", "van", "von", "der", "del", "la", "le", "al", "el",
+                   "and", "et", "und"}
+
+    def _is_name(s: str) -> str | None:
+        name = _AUTHOR_JUNK.sub("", s).strip().rstrip(",").strip()
+        words = name.split()
+        if len(words) < 2 or len(words) > 5:
+            return None
+        if not all(w[0].isupper() or w in _PARTICLES for w in words):
+            return None
+        return name
+
     authors = []
     for i in range(title_idx + 1, end_idx):
         b = blocks[i]
         if b.kind not in ("para", "heading") or not b.lines:
             continue
-        t = b.text.strip()
-        if len(t) > 60 or len(t) < 3:
-            continue
-        if len(b.lines) > 2:
-            continue
         sz = max(l.size for l in b.lines)
-        if sz < body_size * 0.85:
+        if sz < body_size * 0.85 or sz > body_size * 1.5:
             continue
+        # Try per-line extraction first (handles mixed name+institution blocks)
+        if len(b.lines) >= 2:
+            line_names = []
+            for line in b.lines:
+                lt = line.text.strip()
+                if not lt or _INSTITUTION_RE.search(lt) or "@" in lt:
+                    break
+                n = _is_name(lt)
+                if n:
+                    line_names.append(n)
+            if line_names:
+                authors.extend(line_names)
+                continue
+        # Whole-block checks
+        t = b.text.strip()
         if _INSTITUTION_RE.search(t):
             continue
         if "@" in t or t.startswith("http"):
             continue
-        name = _AUTHOR_JUNK.sub("", t).strip().rstrip(",").strip()
-        words = name.split()
-        if len(words) < 2 or len(words) > 5:
+        # Single-name block fallback
+        if len(t) > 60 or len(t) < 3 or len(b.lines) > 2:
             continue
-        if not all(w[0].isupper() or w in ("de", "di", "van", "von", "der", "del", "la", "le", "al", "el",
-                                            "and", "et", "und") for w in words):
-            continue
-        authors.append(name)
+        name = _is_name(t)
+        if name:
+            authors.append(name)
     if not authors:
         authors = _authors_from_table(blocks, title_idx, end_idx)
     if not authors:
