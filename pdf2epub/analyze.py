@@ -1136,7 +1136,7 @@ def detect_toc(blocks: list[Block], c: Counters) -> list[Block]:
         run, j, skipped = [], i, 0
         while j < len(blocks):
             bk = blocks[j]
-            if bk.kind not in ("para", "heading"):
+            if bk.kind not in ("para", "heading", "li"):
                 break
             t = bk.text.strip()
             if len(bk.lines) > 3 and ". . ." in t:
