@@ -77,7 +77,7 @@ def norm_title(text: str) -> str:
 def strip_numbering(text: str) -> str:
     text = re.sub(
         r"^(?:chapter|part|section|appendix|annex)?\s*"
-        r"(?:[\dIVXLC]+[.)]?\s+|[\d.]+\s+|[A-Z][.)]\s+|(?-i:[A-Z])\s+(?=(?-i:[A-Z])))",
+        r"(?:[\dIVXLC]+[.:)]?\s+|[\d.]+\s+|[A-Z][.:)]\s+|(?-i:[A-Z])\s+(?=(?-i:[A-Z])))",
         "", text, flags=re.I,
     ).strip()
     return norm_title(text)
