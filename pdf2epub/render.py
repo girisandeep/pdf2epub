@@ -26,6 +26,20 @@ _XREF_RE = re.compile(
     r"(?:\((\d+(?:\.\d+)*[a-z]?)\)|(\d+(?:\.\d+)*[a-z]?))"   # (4) or 1.2
     , re.I)
 
+_NUM = r"\d+(?:\.\d+)*[a-z]?"
+_XREF_MULTI_RE = re.compile(
+    r"(?<![.\w])"
+    r"(Fig(?:ure)?s?\.?|Tables?|Tab\.|"
+    r"Eq(?:uation)?s?\.?|"
+    r"(?:Sub)?[Ss]ections?|Sect?\.|§|"
+    r"Chapters?|Parts?|"
+    r"Appendi(?:x|ces)|Algorithms?|Theorems?|Lemmas?|"
+    r"Corollar(?:y|ies)|Propositions?|Definitions?)"
+    r"\s*"
+    r"(" + _NUM + r"(?:\s*[,;]\s*" + _NUM + r")*"
+    r"(?:\s+and\s+" + _NUM + r")?)"
+    , re.I)
+
 _CITE_RE = re.compile(r"\[(\d+(?:\s*[,;]\s*\d+)*)\]")
 _CITE_ALPHA_RE = re.compile(r"\[([A-Z][A-Za-z+\d]{1,20}(?:\s*[,;]\s*[A-Z][A-Za-z+\d]{1,20})*)\]")
 _CITE_PAREN_RE = re.compile(r"\(([^)]{8,200})\)")
@@ -214,6 +228,32 @@ def _insert_xrefs(html: str, ctx: RenderCtx) -> str:
             file, anchor = tgt
             href = f"#{anchor}" if file == ctx.current_file else f"{file}#{anchor}"
             candidates.append((m.start(), m.end(), f'<a href="{href}">{m.group()}</a>'))
+        for m in _XREF_MULTI_RE.finditer(text):
+            kind = m.group(1)
+            nums_str = m.group(2)
+            nums = re.findall(r"\d+(?:\.\d+)*[a-z]?", nums_str)
+            if len(nums) < 2:
+                continue
+            parts_x: list[str] = []
+            any_linked = False
+            pos = 0
+            for nm in re.finditer(r"\d+(?:\.\d+)*[a-z]?", nums_str):
+                parts_x.append(nums_str[pos:nm.start()])
+                key = _xref_key(kind, nm.group())
+                tgt = ctx.xref_targets.get(key)
+                if tgt:
+                    file, anchor = tgt
+                    href = f"#{anchor}" if file == ctx.current_file else f"{file}#{anchor}"
+                    parts_x.append(f'<a href="{href}">{nm.group()}</a>')
+                    any_linked = True
+                else:
+                    parts_x.append(nm.group())
+                pos = nm.end()
+            parts_x.append(nums_str[pos:])
+            if any_linked:
+                ws = m.group()[len(kind):len(m.group()) - len(nums_str)]
+                repl = f"{kind}{ws}{''.join(parts_x)}"
+                candidates.append((m.start(), m.end(), repl))
         for cite_re in (_CITE_RE, _CITE_ALPHA_RE):
             for m in cite_re.finditer(text):
                 keys = re.split(r"[,;]\s*", m.group(1).strip())
@@ -252,7 +292,7 @@ def _insert_xrefs(html: str, ctx: RenderCtx) -> str:
                     parts_out.append(part)
             if any_linked:
                 candidates.append((m.start(), m.end(), "(" + "; ".join(parts_out) + ")"))
-        candidates.sort()
+        candidates.sort(key=lambda c: (c[0], -c[1]))
         result = []
         last_end = 0
         for start, end, repl in candidates:

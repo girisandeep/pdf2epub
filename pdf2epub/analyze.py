@@ -869,6 +869,16 @@ def merge_continuations(blocks: list[Block], c: Counters) -> list[Block]:
             p = _find_last_para(out)
             if p is not None and _try_merge(p, b, c):
                 continue
+        elif prev.kind == "li":
+            if _try_merge(prev, b, c):
+                continue
+            if not prev.text.rstrip().endswith(TERMINAL) and _starts_lower(b.text) \
+                    and len(b.text.strip()) < 40:
+                prev.lines += b.lines
+                prev.full_last = b.full_last
+                prev.region, prev.page = b.region, b.page
+                c.merged_paragraphs += 1
+                continue
         elif prev.kind == "para" and (
                 _short_fragment(prev) or _short_fragment(b)
                 or prev.text.rstrip().endswith(("-", "­"))
