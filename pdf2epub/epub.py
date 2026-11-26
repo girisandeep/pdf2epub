@@ -29,6 +29,7 @@ table { border-collapse: collapse; margin: 1em auto; max-width: 100%; font-size:
 caption { font-weight: bold; margin-bottom: .4em; text-align: left; }
 th, td { border: 1px solid #999; padding: .25em .5em; vertical-align: top; }
 th { background: #eee; } td.num { text-align: right; }
+div.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 0 1em; }
 aside.footnote { font-size: .85em; margin: 0 0 .8em 1.2em; padding-left: .6em; border-left: 2px solid #ccc; }
 aside.footnote p { margin: 0; } a.fn-back { text-decoration: none; font-weight: bold; }
 ul.toc { list-style: none; padding-left: 0; } ul.toc li { margin-bottom: .4em; }

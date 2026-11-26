@@ -543,7 +543,7 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id,
             tbl = _render_table(b, ctx)
             if b.anchor:
                 tbl = tbl.replace("<table>", f'<table id="{b.anchor}">', 1)
-            html.append(tbl)
+            html.append(f'<div class="table-wrap">{tbl}</div>')
         elif k == "toc":
             html.append(_render_toc(b, ctx))
         elif k == "index":
