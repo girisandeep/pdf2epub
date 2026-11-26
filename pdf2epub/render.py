@@ -361,6 +361,7 @@ def inline_html(lines: list[Line], ctx: RenderCtx, *, strip_bold=False, footnote
                 html = _linkify(html)
         out.append(escape(lead) + html + escape(trail))
     s = "".join(out)
+    s = s.replace("�", "")
     s = re.sub(r"[ \t]+", " ", s).strip()
     for tag in ("em", "strong", "code", "sub", "sup"):
         s = re.sub(rf"</{tag}>(\s*)<{tag}>", r"\1", s)
