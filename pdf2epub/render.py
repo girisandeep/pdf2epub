@@ -532,8 +532,8 @@ def render_blocks(blocks: list[Block], ctx: RenderCtx, *, heading_id,
                                 f'role="img" style="width:{w:.2f}em"/>{alt_span}</div>')
             elif href:
                 cap = inline_html(b.caption, ctx) if b.caption else ""
-                alt = escape(_plain(b.caption, ctx))[:200] if b.caption else (escape(im.alt[:200]) if im.alt else "Figure")
-                fig = f'<img src="{href}" alt="{alt}" role="img"/>'
+                alt = quoteattr(_plain(b.caption, ctx)[:200] if b.caption else (im.alt[:200] if im.alt else "Figure"))
+                fig = f'<img src="{href}" alt={alt} role="img"/>'
                 if im.alt and im.alt != "Figure":
                     fig += f'<span class="eq-alt">{escape(im.alt[:600])}</span>'
                 if cap:
