@@ -14,7 +14,7 @@
   "paras": 101,
   "precision": 0.9402,
   "recall": 0.9078,
-  "secs": 4.7,
+  "secs": 4.8,
   "tables": 0,
   "valid": true
  },
@@ -33,7 +33,7 @@
   "paras": 117,
   "precision": 0.9824,
   "recall": 0.9491,
-  "secs": 4.6,
+  "secs": 4.7,
   "tables": 4,
   "valid": true
  },
@@ -52,7 +52,7 @@
   "paras": 199,
   "precision": 0.9863,
   "recall": 0.9897,
-  "secs": 5.3,
+  "secs": 5.4,
   "tables": 6,
   "valid": true
  },
@@ -71,7 +71,7 @@
   "paras": 439,
   "precision": 0.997,
   "recall": 0.9963,
-  "secs": 31.2,
+  "secs": 32.5,
   "tables": 54,
   "valid": true
  },
@@ -90,7 +90,7 @@
   "paras": 796,
   "precision": 0.9998,
   "recall": 0.991,
-  "secs": 13.0,
+  "secs": 13.1,
   "tables": 4,
   "valid": true
  },
@@ -107,9 +107,9 @@
   "mathml": 0,
   "pages": 12,
   "paras": 149,
-  "precision": 0.9928,
-  "recall": 0.9929,
-  "secs": 6.3,
+  "precision": 0.9936,
+  "recall": 0.9933,
+  "secs": 6.7,
   "tables": 16,
   "valid": true
  },
@@ -128,7 +128,7 @@
   "paras": 2588,
   "precision": 0.9987,
   "recall": 0.9811,
-  "secs": 33.0,
+  "secs": 34.1,
   "tables": 8,
   "valid": true
  },
@@ -147,7 +147,7 @@
   "paras": 123,
   "precision": 0.953,
   "recall": 0.9653,
-  "secs": 6.2,
+  "secs": 6.8,
   "tables": 0,
   "valid": true
  },
@@ -185,7 +185,7 @@
   "paras": 454,
   "precision": 0.9982,
   "recall": 0.9988,
-  "secs": 11.1,
+  "secs": 11.3,
   "tables": 2,
   "valid": true
  }
